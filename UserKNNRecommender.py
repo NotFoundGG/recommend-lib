@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     k = args.N
 
-    df = load_rate('ml100k')
+    df = load_rate('ml-100k')
 
     reader = Reader()
     data = Dataset.load_from_df(df=df[['user', 'item', 'rating']], reader=reader, rating_scale=(1, 5))

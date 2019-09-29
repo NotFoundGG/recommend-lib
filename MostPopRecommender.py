@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-09-29 16:26:59
+@LastEditTime: 2019-09-29 16:40:17
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     #TODO top-N setting
     k = args.N
 
-    df = load_rate('ml100k')
+    df = load_rate('ml-100k')
     train_set, test_set = train_test_split(df, test_size=0.2, random_state=2019)
 
     reco = MostPopRecommender(k)
