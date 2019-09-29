@@ -2,11 +2,13 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-09-29 15:47:57
+@LastEditTime: 2019-09-29 16:34:31
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
 '''
+import argparse
+
 import numpy as np
 import pandas as pd
 from collections import defaultdict
@@ -14,11 +16,26 @@ from surprise import KNNBasic
 from surprise import Dataset, Reader
 from surprise.model_selection import train_test_split
 
-from data_loader import load_rate
-from metrics import ndcg_at_k, mean_average_precision
+from util.data_loader import load_rate
+from util.metrics import ndcg_at_k, mean_average_precision
 
 if __name__ == '__main__':
-    k = 10
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--N', 
+                        type=int, 
+                        default=10, 
+                        help='top number of recommend list')
+    parser.add_argument('--k', 
+                        type=int, 
+                        default=40, 
+                        help='The (max) number of neighbors to take into account for aggregation')
+    parser.add_argument('--mink', 
+                        type=int, 
+                        default=1, 
+                        help='The minimum number of neighbors to take into account for aggregation')
+    args = parser.parse_args()
+
+    k = args.N
 
     df = load_rate('ml100k')
 
@@ -29,7 +46,7 @@ if __name__ == '__main__':
     # params for item KNN
     sim_options = {'name': 'pearson_baseline', 'user_based': True}
     
-    algo = KNNBasic(sim_options=sim_options)
+    algo = KNNBasic(args.k, args.mink, sim_options=sim_options)
     algo.fit(train_set)
 
     test_set = pd.DataFrame(test_set, columns=['user', 'item', 'rating']) 
