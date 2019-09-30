@@ -2,10 +2,10 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 10:19:52
+@LastEditTime: 2019-09-30 10:56:44
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
-@Description: 
+@Description: data utils
 '''
 import random
 
@@ -48,7 +48,7 @@ def load_mat(src='ml-100k', test_num=100):
     
     train_data = train_data.values.tolist()
     # load ratings as a dok matrix
-    train_mat = sp.dok_matrix([user_num, item_num], dtype=np.float32)
+    train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
     for x in train_data:
         train_mat[x[0], x[1]] = 1.0
     
