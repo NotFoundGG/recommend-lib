@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 14:39:02
+@LastEditTime: 2019-09-30 14:51:25
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -155,7 +155,7 @@ if __name__ == '__main__':
                         type=int, 
                         default=4, 
                         help='Sample negative items for training')
-    parser.add_argument('--test_num_neg', 
+    parser.add_argument('--test_num_ng', 
                         type=int, 
                         default=99, 
                         help='sample part of negative items for testing')
