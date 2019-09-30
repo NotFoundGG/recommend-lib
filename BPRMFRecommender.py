@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:56:31
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 10:58:48
+@LastEditTime: 2019-09-30 11:40:30
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: BPR recommender
@@ -127,19 +127,20 @@ if __name__ == '__main__':
             count += 1
 
         model.eval()
-        HR, NDCG = metric_eval(model, test_loader, args.top_k)
+        HR, NDCG, MAP = metric_eval(model, test_loader, args.top_k)
 
         elapsed_time = time.time() - start_time
         print('The time elapse of epoch {:03d}'.format(epoch + 1) + ' is: ' + 
 			time.strftime("%H: %M: %S", time.gmtime(elapsed_time)))
-        print("HR: {:.3f}\tNDCG: {:.3f}".format(np.mean(HR), np.mean(NDCG)))
+        print("HR: {:.3f}\tNDCG: {:.3f}\tMAP: {:.3f}".format(np.mean(HR), np.mean(NDCG), np.mean(MAP)))
 
         if HR > best_hr:
-            best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
+            best_hr, best_ndcg, best_map, best_epoch = HR, NDCG, MAP, epoch
             if args.out:
                 if not os.path.exists(f'./models/{src}/'):
                     os.makedirs(f'./models/{src}/')
                 torch.save(model, f'./models/{src}/BPR.pt')
-    print('End. Best epoch {:03d}: HR = {:.3f}, NDCG = {:.3f}'.format(best_epoch, 
-                                                                      best_hr, 
-                                                                      best_ndcg))
+    print('End. Best epoch {:03d}: HR = {:.3f}, NDCG = {:.3f}, MAP = {:.3f}'.format(best_epoch, 
+                                                                                    best_hr, 
+                                                                                    best_ndcg, 
+                                                                                    best_map))

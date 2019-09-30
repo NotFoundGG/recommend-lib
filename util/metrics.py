@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:11:44
+@LastEditTime: 2019-09-30 11:41:06
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -12,36 +12,48 @@ import torch
 
 # pytorch KPI calculating methods
 def hit(gt_item, pred_items):
-	if gt_item in pred_items:
-		return 1
-	return 0
+    if gt_item in pred_items:
+        return 1
+    return 0
 
+def ap(gt_item, pred_items):
+    hits = 0
+    sum_precs = 0
+    if gt_item in pred_items:
+        index = pred_items.index(gt_item)
+        hits += 1
+        sum_precs += hits / (index + 1.0)
+    if hits > 0:
+        return sum_precs
+    else:
+        return 0
 
 def ndcg(gt_item, pred_items):
-	if gt_item in pred_items:
-		index = pred_items.index(gt_item)
-		return np.reciprocal(np.log2(index+2))
-	return 0
+    if gt_item in pred_items:
+        index = pred_items.index(gt_item)
+        return np.reciprocal(np.log2(index+2))
+    return 0
 
 
 def metric_eval(model, test_loader, top_k):
-	HR, NDCG = [], []
+    HR, NDCG, MAP = [], [], []
 
-	for user, item_i, item_j in test_loader:
-		user = user.cuda()
-		item_i = item_i.cuda()
-		item_j = item_j.cuda() # not useful when testing
+    for user, item_i, item_j in test_loader:
+        user = user.cuda()
+        item_i = item_i.cuda()
+        item_j = item_j.cuda() # not useful when testing
 
-		prediction_i, _ = model(user, item_i, item_j)
-		_, indices = torch.topk(prediction_i, top_k)
-		recommends = torch.take(
-				item_i, indices).cpu().numpy().tolist()
+        prediction_i, _ = model(user, item_i, item_j)
+        _, indices = torch.topk(prediction_i, top_k)
+        recommends = torch.take(
+                item_i, indices).cpu().numpy().tolist()
 
-		gt_item = item_i[0].item()
-		HR.append(hit(gt_item, recommends))
-		NDCG.append(ndcg(gt_item, recommends))
+        gt_item = item_i[0].item()
+        HR.append(hit(gt_item, recommends))
+        NDCG.append(ndcg(gt_item, recommends))
+        MAP.append(ap(gt_item, recommends))
 
-	return np.mean(HR), np.mean(NDCG)
+    return np.mean(HR), np.mean(NDCG), np.mean(MAP)
 
 
 # some algorithm just use numpy-based, so the KPI calculating methods are different from pytorch
