@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 14:54:58
+@LastEditTime: 2019-09-30 14:58:05
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     if model_name == 'NeuMF-pre':
         optimizer = optim.SGD(model.parameters(), lr=args.lr)
     else:
-        optimizer = optim.Adam(model.paramters(), lr=args.lr)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     count, best_hr = 0, 0
     for epoch in range(args.epochs):
