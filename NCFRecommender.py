@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 15:10:54
+@LastEditTime: 2019-09-30 15:49:42
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -188,9 +188,9 @@ if __name__ == '__main__':
     model_name = args.model_name
     assert model_name in ['MLP', 'GMF', 'NeuMF-end', 'NeuMF-pre']
 
-    GMF_model_path = './models/GMF.pt'
-    MLP_model_path = './models/MLP.pt'
-    NeuMF_model_path = './models/NeuMF.pt'
+    GMF_model_path = f'./models/{src}/GMF.pt'
+    MLP_model_path = f'./models/{src}/MLP.pt'
+    NeuMF_model_path = f'./models/{src}/NeuMF.pt'
 
     if model_name == 'NeuMF-pre':
         assert os.path.exists(GMF_model_path), 'lack of GMF model'    
