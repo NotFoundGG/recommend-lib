@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:41:06
+@LastEditTime: 2019-09-30 15:07:17
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -34,10 +34,8 @@ def ndcg(gt_item, pred_items):
         return np.reciprocal(np.log2(index+2))
     return 0
 
-
-def metric_eval(model, test_loader, top_k):
+def _bpr_topk(model, test_loader, top_k):
     HR, NDCG, MAP = [], [], []
-
     for user, item_i, item_j in test_loader:
         user = user.cuda()
         item_i = item_i.cuda()
@@ -47,14 +45,39 @@ def metric_eval(model, test_loader, top_k):
         _, indices = torch.topk(prediction_i, top_k)
         recommends = torch.take(
                 item_i, indices).cpu().numpy().tolist()
-
         gt_item = item_i[0].item()
+        
         HR.append(hit(gt_item, recommends))
         NDCG.append(ndcg(gt_item, recommends))
         MAP.append(ap(gt_item, recommends))
 
     return np.mean(HR), np.mean(NDCG), np.mean(MAP)
 
+def _ncf_topk(model, test_loader, top_k):
+    HR, NDCG, MAP = [], [], []
+    for user, item, _ in test_loader: # _ is label
+        user = user.cuda()
+        item = item.cuda()
+
+        predictions = model(user, item)
+        _, indices = torch.topk(predictions, top_k)
+        recommends = torch.take(
+                item, indices).cpu().numpy().tolist()
+
+        gt_item = item[0].item()
+        HR.append(hit(gt_item, recommends))
+        NDCG.append(ndcg(gt_item, recommends))
+        MAP.append(ap(gt_item, recommends))
+
+    return np.mean(HR), np.mean(NDCG), np.mean(MAP)
+
+def metric_eval(model, test_loader, top_k, algo='bpr'):
+    if algo == 'bpr':
+        HR, NDCG, MAP = _bpr_topk(model, test_loader, top_k)
+    elif algo == 'ncf':
+        HR, NDCG, MAP = _ncf_topk(model, test_loader, top_k)
+
+    return HR, NDCG, MAP
 
 # some algorithm just use numpy-based, so the KPI calculating methods are different from pytorch
 def precision_at_k(r, k):

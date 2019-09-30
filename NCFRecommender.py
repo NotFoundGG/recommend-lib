@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 14:58:05
+@LastEditTime: 2019-09-30 15:07:45
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -231,7 +231,7 @@ if __name__ == '__main__':
             count += 1
 
         model.eval()
-        HR, NDCG, MAP = metric_eval(model, test_loader, args.top_k)
+        HR, NDCG, MAP = metric_eval(model, test_loader, args.top_k, algo='ncf')
         elapsed_time = time.time() - start_time
         print("The time elapse of epoch {:03d}".format(epoch + 1) + ' is: ' + 
                 time.strftime('%H: %M: %S', time.gmtime(elapsed_time)))
