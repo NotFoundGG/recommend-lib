@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 14:51:25
+@LastEditTime: 2019-09-30 14:52:48
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     MLP_model_path = './models/MLP.pt'
     NeuMF_model_path = './models/NeuMF.pt'
 
-    if model == 'NeuMF-pre':
+    if model_name == 'NeuMF-pre':
         assert os.path.exists(GMF_model_path), 'lack of GMF model'    
         assert os.path.exists(MLP_model_path), 'lack of MLP model'
         GMF_model = torch.load(GMF_model_path)
