@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-09-29 16:34:31
+@LastEditTime: 2019-09-30 11:15:08
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
@@ -12,7 +12,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from surprise import KNNBasic
+from surprise import KNNWithMeans
 from surprise import Dataset, Reader
 from surprise.model_selection import train_test_split
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # params for item KNN
     sim_options = {'name': 'pearson_baseline', 'user_based': True}
     
-    algo = KNNBasic(args.k, args.mink, sim_options=sim_options)
+    algo = KNNWithMeans(args.k, args.mink, sim_options=sim_options)
     algo.fit(train_set)
 
     test_set = pd.DataFrame(test_set, columns=['user', 'item', 'rating']) 
@@ -73,3 +73,5 @@ if __name__ == '__main__':
     ndcg_k = np.mean([ndcg_at_k(r, k) for r in preds.values()])
     print(f'NDCG@{k}: {ndcg_k}')
 
+    hr_k = hr_at_k(list(preds.values()))
+    print(f'HR@{k}: {hr_k}')

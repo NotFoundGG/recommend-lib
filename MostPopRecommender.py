@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-09-29 16:40:17
+@LastEditTime: 2019-09-30 11:13:52
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -15,7 +15,7 @@ from collections import defaultdict
 from sklearn.model_selection import train_test_split
 
 from util.data_loader import load_rate
-from util.metrics import ndcg_at_k, mean_average_precision
+from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k
 
 class MostPopRecommender(object):
     def __init__(self, N=5):
@@ -74,3 +74,6 @@ if __name__ == '__main__':
 
     ndcg_k = np.mean([ndcg_at_k(r, k) for r in preds.values()])
     print(f'NDCG@{k}: {ndcg_k}')
+
+    hr_k = hr_at_k(list(preds.values()))
+    print(f'HR@{k}: {hr_k}')

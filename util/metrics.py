@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 10:30:10
+@LastEditTime: 2019-09-30 11:11:44
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -10,6 +10,7 @@
 import numpy as np
 import torch
 
+# pytorch KPI calculating methods
 def hit(gt_item, pred_items):
 	if gt_item in pred_items:
 		return 1
@@ -42,6 +43,8 @@ def metric_eval(model, test_loader, top_k):
 
 	return np.mean(HR), np.mean(NDCG)
 
+
+# some algorithm just use numpy-based, so the KPI calculating methods are different from pytorch
 def precision_at_k(r, k):
     '''
     Args:
@@ -82,6 +85,9 @@ def mean_average_precision(rs):
     '''
     return np.mean([average_precision(r) for r in rs])
 
+def hr_at_k(rs):
+    return np.mean(rs)
+
 def dcg_at_k(r, k):
     '''
     Args:
@@ -91,7 +97,7 @@ def dcg_at_k(r, k):
     Returns:
         Discounted cumulative gain
     '''
-    r = np.asfarray(r)[:k]
+    r = np.asfarray(r)[:k] != 0
     if r.size:
         return np.sum(np.subtract(np.power(2, r), 1) / np.log2(np.arange(2, r.size + 2)))
     return 0.
