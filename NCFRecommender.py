@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 15:07:45
+@LastEditTime: 2019-09-30 15:10:54
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', 
                         type=str, 
                         default='NeuMF-end', 
-                        help='target model name')
+                        help='target model name, if NeuMF-pre plz run MLP and GMF before')
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
@@ -235,7 +235,7 @@ if __name__ == '__main__':
         elapsed_time = time.time() - start_time
         print("The time elapse of epoch {:03d}".format(epoch + 1) + ' is: ' + 
                 time.strftime('%H: %M: %S', time.gmtime(elapsed_time)))
-        print('HR: {:.3f}\tNDCG: {:.3f}'.format(np.mean(HR), np.mean(NDCG)))
+        print('HR: {:.3f}\tNDCG: {:.3f}\tMAP: {:.3f}'.format(np.mean(HR), np.mean(NDCG), np.mean(MAP)))
 
         if HR > best_hr:
             best_hr, best_ndcg, best_map, best_epoch = HR, NDCG, MAP, epoch
