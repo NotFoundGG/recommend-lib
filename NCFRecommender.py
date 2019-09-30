@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 14:34:35
+@LastEditTime: 2019-09-30 14:39:02
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -166,6 +166,10 @@ if __name__ == '__main__':
                         type=str, 
                         default='0', 
                         help='gpu card ID')
+    parser.add_argument('--model_name', 
+                        type=str, 
+                        default='NeuMF-end', 
+                        help='target model name')
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
@@ -181,7 +185,7 @@ if __name__ == '__main__':
                                   shuffle=False, num_workers=0)
     
     # model name 
-    model_name = 'NeuMF-end'
+    model_name = args.model_name
     assert model_name in ['MLP', 'GMF', 'NeuMF-end', 'NeuMF-pre']
 
     GMF_model_path = './models/GMF.pt'
