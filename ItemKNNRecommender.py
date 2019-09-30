@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:15:16
+@LastEditTime: 2019-09-30 11:17:52
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Item-KNN recommender
@@ -17,7 +17,7 @@ from surprise import Dataset, Reader
 from surprise.model_selection import train_test_split
 
 from util.data_loader import load_rate
-from util.metrics import ndcg_at_k, mean_average_precision
+from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

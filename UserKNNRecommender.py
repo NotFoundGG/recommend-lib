@@ -17,7 +17,7 @@ from surprise import Dataset, Reader
 from surprise.model_selection import train_test_split
 
 from util.data_loader import load_rate
-from util.metrics import ndcg_at_k, mean_average_precision
+from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
