@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 15:49:42
+@LastEditTime: 2019-09-30 15:51:22
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -93,7 +93,7 @@ class NCF(nn.Module):
                     m1.bias.data.copy_(m2.bias)
 
             # predict layers
-            predict_weight = torch.cat([self.GMF_model.predic_layer.weight, 
+            predict_weight = torch.cat([self.GMF_model.predict_layer.weight, 
                                         self.MLP_model.predict_layer.weight], dim=1)
             predict_bias = self.GMF_model.predict_layer.bias + self.MLP_model.predict_layer.bias
 
