@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 14:52:48
+@LastEditTime: 2019-09-30 14:54:58
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -66,10 +66,10 @@ class NCF(nn.Module):
     def _init_weight_(self):
         '''weights initialization'''
         if not self.model == 'NeuMF-pre':
-            nn.init.normal_(self.embed_user_GMF, std=0.01)
-            nn.init.normal_(self.embed_item_GMF, std=0.01)
-            nn.init.normal_(self.embed_user_MLP, std=0.01)
-            nn.init.normal_(self.embed_item_MLP, std=0.01)
+            nn.init.normal_(self.embed_user_GMF.weight, std=0.01)
+            nn.init.normal_(self.embed_item_GMF.weight, std=0.01)
+            nn.init.normal_(self.embed_user_MLP.weight, std=0.01)
+            nn.init.normal_(self.embed_item_MLP.weight, std=0.01)
 
             for m in self.MLP_layers:
                 if isinstance(m, nn.Linear):
