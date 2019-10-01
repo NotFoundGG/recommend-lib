@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-01 19:30:45
+@LastEditTime: 2019-10-01 19:32:20
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     parser.add_argument('--hid_units', 
                         type=tuple, 
                         nargs='+', 
-                        default=(128, 128)
+                        default=(128, 128),
                         help='hidden units architecture for DNN')
     
     args = parser.parse_args()
