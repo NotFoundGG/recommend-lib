@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-01 19:10:16
+ * @LastEditTime: 2019-10-01 19:35:44
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -13,7 +13,7 @@
 1. you can also download experiment data from links below: 
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
 
-2. Item-Ranking recommendation algorithms reimplementation with pytorch-gpu and [Surprise](https://github.com/NicolasHug/Surprise) Toolkit.
+2. Item-Ranking recommendation algorithms reimplementation with pytorch-gpu, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit and [deepctr-torch](https://github.com/shenweichen/DeepCTR-Torch).
 
 ## The requirements are as follows:
 
