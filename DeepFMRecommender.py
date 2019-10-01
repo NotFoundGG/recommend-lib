@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-01 19:03:07
+@LastEditTime: 2019-10-01 19:30:45
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: 
@@ -35,6 +35,28 @@ if __name__ == '__main__':
                         type=int, 
                         default=256, 
                         help='batch size for training')
+    parser.add_argument('--embed_size', 
+                        type=int, 
+                        default=8, 
+                        help='embedding size')
+    parser.add_argument('--reg_ln', 
+                        type=float, 
+                        default=0.0001, 
+                        help='regularization of linear part')
+    parser.add_argument('--reg_embed', 
+                        type=float, 
+                        default=0.0001, 
+                        help='regularization of embedding part')
+    parser.add_argument('--dropout', 
+                        type=float, 
+                        default=0, 
+                        help='drop out rate')
+
+    parser.add_argument('--hid_units', 
+                        type=tuple, 
+                        nargs='+', 
+                        default=(128, 128)
+                        help='hidden units architecture for DNN')
     
     args = parser.parse_args()
     
@@ -67,7 +89,9 @@ if __name__ == '__main__':
     test_model_input = [test[name] for name in fixlen_feature_names]
 
     # define model, train, predict and evaluate
-    model = DeepFM(linear_feature_columns, dnn_feature_columns, task='regression')
+    model = DeepFM(linear_feature_columns, dnn_feature_columns, embedding_size=args.embed_size, 
+                   dnn_dropout=args.dropout, l2_reg_embedding=args.reg_ln, l2_reg_linear=args.reg_embed, 
+                   dnn_hidden_units=args.hid_units, task='regression')
     model.compile('adam', loss='mse', metrics=['mse'])
 
     history = model.fit(train_model_input, train[target].values, batch_size=args.batch_size, 

@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-01 18:12:27
+ * @LastEditTime: 2019-10-01 19:10:16
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -35,4 +35,5 @@ python ItemKNNRecommender.py
 python UserKNNRecommnder.py
 python BPRMFRecommender.py --factor_num=16
 python NCFRecommnder.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
+python DeepFMRecommender.py
 ```
