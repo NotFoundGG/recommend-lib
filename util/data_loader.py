@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-01 00:41:16
+@LastEditTime: 2019-10-01 18:21:47
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -45,30 +45,15 @@ def load_features(src='ml-100k'):
     df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
              'zip_code', 'timestamp', 'release_date'], axis=1, inplace=True)
     
-    categorical_cols = [col for col in df.columns if col not in ML100K_NUMERIC_COLS + IGNORE_COLS + TARGET_COLS]
-    transform_ref = {}
-    for col in categorical_cols:
-        cats = pd.Categorical(df[col]).categories
-        ref = {}
-        for i, cat in enumerate(cats):
-            ref[cat] = i
-        transform_ref[col] = ref
-    df = df.replace(transform_ref)
+    if src == 'ml-100k':
+        numeric_cols = ML100K_NUMERIC_COLS
+    else:
+        numeric_cols = []
+    categorical_cols = [col for col in df.columns if col not in numeric_cols + IGNORE_COLS + TARGET_COLS]
 
     df.sort_values(by=['user', 'item'], inplace=True)
-    
-    dict_sizes = [df[col].max() + 1 for col in categorical_cols]
-    feature_sizes = [1] * len(ML100K_NUMERIC_COLS) + dict_sizes
-    feature_sizes = [str(i) for i in feature_sizes]
 
-    train_df, test_df = train_test_split(df, test_size=.2, random_state=2019)
-    train_df.to_csv(f'./data/{src}/{src}.train.feats', index=False)
-    test_df.to_csv(f'./data/{src}/{src}.test.feats', index=False)
-
-    with open(os.path.join(f'./data/{src}', 'feature_sizes.txt'), 'w') as f:
-        f.write(','.join(feature_sizes))
-
-    return train_df, test_df, feature_sizes
+    return df, categorical_cols, numeric_cols
 
 def _split_loo(ratings):
     ratings['rank_latest'] = ratings.groupby(['user'])['timestamp'].rank(method='first', 
@@ -113,53 +98,6 @@ def load_mat(src='ml-100k', test_num=100):
                 test_data.append([u, int(i)])
             line = fd.readline()
     return train_data, test_data, user_num, item_num, train_mat
-
-class DFMData(data.Dataset):
-    def __init__(self, df, train=True):
-        self.train=train
-    
-        if self.train:
-            self.train_data = df.iloc[:, 3:].values
-            self.target = df.iloc[:, 2].values
-        else:
-            self.test_data = df.iloc[3:].values
-
-    def __getitem__(self, idx):
-        if self.train:
-            dataI, targetI = self.train_data[idx, :], self.target[idx]
-            categorical_cols = [col for col in dataI.columns if col not in ML100K_NUMERIC_COLS + IGNORE_COLS + TARGET_COLS]
-            # index of continuous features are zero
-            Xi_continuous = np.zeros_like(dataI[ML100K_NUMERIC_COLS])
-            Xi_categorical = dataI[categorical_cols]
-            Xi = torch.from_numpy(np.concatenate((Xi_continuous, Xi_categorical)).astype(np.int32)).unsqueeze(-1)
-
-            # value of categorical features are one (one hot features)
-            Xv_categorical = np.ones_like(dataI[categorical_cols])
-            Xv_continuous = dataI[ML100K_NUMERIC_COLS]
-            Xv = torch.from_numpy(np.concatenate((Xv_continuous, Xv_categorical)).astype(np.int32))
-            
-            return Xi, Xv, targetI
-        else:
-            dataI = self.test_data.iloc[idx, :]
-            categorical_cols = [col for col in dataI.columns if col not in ML100K_NUMERIC_COLS + IGNORE_COLS + TARGET_COLS]
-            # index of continuous features are one
-            Xi_continuous = np.ones_like(dataI[ML100K_NUMERIC_COLS])
-            Xi_categorical = dataI[categorical_cols]
-            Xi = torch.from_numpy(np.concatenate((Xi_continuous, Xi_categorical)).astype(np.int32)).unsqueeze(-1)
-
-            # value of categorical features are one (one hot features)
-            Xv_categorical = np.ones_like(dataI[categorical_cols])
-            Xv_continuous = dataI[ML100K_NUMERIC_COLS]
-            Xv = torch.from_numpy(np.concatenate((Xv_continuous, Xv_categorical)).astype(np.int32))
-
-            return Xi, Xv
-
-    def __len__(self):
-        if self.train:
-            return len(self.train_data)
-        else:
-            return len(self.test_data)
-
 
 class NCFData(data.Dataset):
     def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
