@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-02 19:43:33
+@LastEditTime: 2019-10-02 19:49:44
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: DeepFM recommender
@@ -143,7 +143,8 @@ if __name__ == '__main__':
     start_time = time()
     rs, ndcg_list = [], []
     for u in user_set:
-        items = negatives.query(f'user == {u}')['negative_samples'].values.tolist()[0]
+        # items = negatives.query(f'user == {u}')['negative_samples'].values.tolist()[0]
+        items = item_set
         pred_data = construct_u_pred_feature(u, items, user_info, item_info)
 
         if src == 'ml-100k':
