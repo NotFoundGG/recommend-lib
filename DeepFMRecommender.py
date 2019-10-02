@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-02 18:12:43
+@LastEditTime: 2019-10-02 19:43:33
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: DeepFM recommender
