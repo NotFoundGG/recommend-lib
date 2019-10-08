@@ -39,8 +39,8 @@ if __name__ == '__main__':
 
     df = load_rate('ml-100k')
 
-    reader = Reader()
-    data = Dataset.load_from_df(df=df[['user', 'item', 'rating']], reader=reader, rating_scale=(1, 5))
+    reader = Reader(rating_scale=(1, 5))
+    data = Dataset.load_from_df(df=df[['user', 'item', 'rating']], reader=reader)
     train_set, test_set = train_test_split(data, test_size=.2)
 
     # params for item KNN
