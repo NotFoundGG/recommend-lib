@@ -50,14 +50,31 @@ if __name__ == '__main__':
     algo.fit(train_set)
 
     test_set = pd.DataFrame(test_set, columns=['user', 'item', 'rating']) 
+    # true item with some negative sampling items, compose 50 items as alternatives
+    # count all items interacted in full dataset
+    u_is = defaultdict(set)
+    for _, row in df.iterrows():
+        u_is[int(row['user'])].add(int(row['item']))
+
+    test_u_is = defaultdict(set)
+    for _, row in test_set.iterrows():
+        test_u_is[int(row['user'])].add(int(row['item']))
+    item_pool = test_set.item.unique().tolist()
+
+    for k, v in test_u_is.items():
+        while len(test_u_is[k]) > 50:
+            cand = int(np.random.choice(item_pool))
+            while cand in u_is[k] or cand in test_u_is[k]:
+                cand = int(np.random.choice(item_pool))
+            test_u_is[k].add(cand)
     
     # get top-N list for test users
     preds = {}
-    item_list = test_set.item.unique()
-    for u in test_set.user.unique():
-        pred_rates = [algo.predict(u, i)[0] for i in item_list]
+    for u in test_u_is.keys():
+        test_u_is[u] = list(test_u_is[u])
+        pred_rates = [algo.predict(u, i)[0] for i in test_u_is[u]]
         rec_idx = np.argsort(pred_rates)[::-1][:k]
-        top_n = item_list[rec_idx]
+        top_n = test_u_is[u][rec_idx]
         preds[u] = list(top_n)
     # get actual interaction info. of test users
     ur = defaultdict(list)
