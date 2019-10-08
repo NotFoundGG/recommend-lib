@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:15:08
+@LastEditTime: 2019-10-08 23:52:50
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
@@ -61,20 +61,20 @@ if __name__ == '__main__':
         test_u_is[int(row['user'])].add(int(row['item']))
     item_pool = test_set.item.unique().tolist()
 
-    for k, v in test_u_is.items():
-        while len(test_u_is[k]) > 50:
-            cand = int(np.random.choice(item_pool))
-            while cand in u_is[k] or cand in test_u_is[k]:
-                cand = int(np.random.choice(item_pool))
-            test_u_is[k].add(cand)
-    
+    max_i_num = test_set.groupby('user')['item'].count().max()
+
+    for key, val in test_u_is.items():
+        cands_num = max_i_num - len(val)
+        cands = np.random.choice(item_pool, cands_num).astype(int)
+        test_u_is[key].update(set(cands))
+
     # get top-N list for test users
     preds = {}
     for u in test_u_is.keys():
         test_u_is[u] = list(test_u_is[u])
         pred_rates = [algo.predict(u, i)[0] for i in test_u_is[u]]
         rec_idx = np.argsort(pred_rates)[::-1][:k]
-        top_n = test_u_is[u][rec_idx]
+        top_n = np.array(test_u_is[u])[rec_idx]
         preds[u] = list(top_n)
     # get actual interaction info. of test users
     ur = defaultdict(list)

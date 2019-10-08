@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:17:52
+@LastEditTime: 2019-10-08 23:55:11
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Item-KNN recommender
@@ -50,14 +50,31 @@ if __name__ == '__main__':
     algo.fit(train_set)
 
     test_set = pd.DataFrame(test_set, columns=['user', 'item', 'rating']) 
+    # true item with some negative sampling items, compose 50 items as alternatives
+    # count all items interacted in full dataset
+    u_is = defaultdict(set)
+    for _, row in df.iterrows():
+        u_is[int(row['user'])].add(int(row['item']))
+
+    test_u_is = defaultdict(set)
+    for _, row in test_set.iterrows():
+        test_u_is[int(row['user'])].add(int(row['item']))
+    item_pool = test_set.item.unique().tolist()
+
+    max_i_num = test_set.groupby('user')['item'].count().max()
+
+    for key, val in test_u_is.items():
+        cands_num = max_i_num - len(val)
+        cands = np.random.choice(item_pool, cands_num).astype(int)
+        test_u_is[key].update(set(cands))
     
     # get top-N list for test users
     preds = {}
-    item_list = test_set.item.unique()
-    for u in test_set.user.unique():
-        pred_rates = [algo.predict(u, i)[0] for i in item_list]
+    for u in test_u_is.keys():
+        test_u_is[u] = list(test_u_is[u])
+        pred_rates = [algo.predict(u, i)[0] for i in test_u_is[u]]
         rec_idx = np.argsort(pred_rates)[::-1][:k]
-        top_n = item_list[rec_idx]
+        top_n = np.array(test_u_is[u])[rec_idx]
         preds[u] = list(top_n)
     # get actual interaction info. of test users
     ur = defaultdict(list)
