@@ -78,6 +78,7 @@ def read_features(file, features):
 def map_features(src='ml-100k'):
     features = {}
     features = read_features(f'./data/{src}/{src}.train.libfm', features)
+    features = read_features(f'./data/{src}/{src}.test.libfm', features)
     print(f'number of features: {len(features)}')
 
     return features, len(features)

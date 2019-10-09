@@ -21,6 +21,8 @@ import torch.utils.data as data
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
+from util.metrics import metrics
+from util.data_loader import load_libfm, map_features
 
 class NFM(nn.Module):
     def __init__(self, num_features, num_factors, act_function, layers, batch_norm, drop_prob, pretrain_FM):
@@ -211,4 +213,3 @@ if __name__ == '__main__':
                         help='gpu card ID')
     args = parser.parse_args()
 
-    
