@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-02 19:49:44
+@LastEditTime: 2019-10-09 23:17:24
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -290,5 +290,36 @@ if __name__ == '__main__':
     for epoch in range(args.epochs):
         model.train() # Enable dropout and batch_norm
         start_time = time.time()
+        
+        for features, feature_values, label in train_loader:
+            features = features.cuda()
+            feature_values = feature_values.cuda()
+            label = label.cuda()
 
+            model.zero_grad()
+            prediction = model(features, feature_values)
+            loss = criterion(prediction, label)
+            loss += args.lamda * model.embeddings.weight.norm()
+            loss.backward()
+            optimizer.step()
+
+            count += 1
+
+        model.eval()
+        train_result = metrics(model, train_loader)
+        valid_result = metrics(model, valid_loader)
+        test_result = metrics(model, test_loader)
+
+        print('Runing Epoch {:03d} costs '.format(epoch) + time.strftime('%H: %M: %S', 
+                                                                         time.gmtime(time.time() - start_time)))
+        print('Train_RMSE: {:.3f}, Valid_RMSE: {:.3f}, Test_RMSE: {:.3f}'.format(train_result, 
+                                                                                 valid_result, 
+                                                                                 test_result))
+        if test_result < best_rmse:
+            best_rmse, best_epoch = test_result, epoch
+            if args.out:
+                if not os.path.exists(model_path):
+                    os.mkdir(model_path)
+                torch.save(model, f'{model_path}{args.model}.pt')
+    print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
     
