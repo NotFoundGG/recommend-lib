@@ -28,6 +28,7 @@ def load_rate(src='ml-100k'):
 
     return df
 
+#########################  #TODO ######## delete in future, use for DeepFM
 def load_features(src='ml-100k'):
     '''load for FM'''
     df = load_rate(src)
@@ -54,6 +55,72 @@ def load_features(src='ml-100k'):
     df.sort_values(by=['user', 'item'], inplace=True)
 
     return df, categorical_cols, numeric_cols
+
+# NerFM prepare
+def load_libfm(src='ml-100k'):
+    df = load_rate(src)
+
+def read_features(file, features):
+    ''' Read features from the given file. '''
+    i = len(features)
+    with open(file, 'r') as fd:
+        line = fd.readline()
+        while line:
+            items = line.strip().split()
+            for item in items[1:]:
+                item = item.split(':')[0]
+                if item not in features:
+                    features[item] = i
+                    i += 1
+            line = fd.readline()
+    return features
+
+def map_features(src='ml-100k'):
+    features = {}
+    features = read_features(f'./data/{src}/{src}.train.libfm', features)
+    print(f'number of features: {len(features)}')
+
+    return features, len(features)
+
+class FMData(data.Dataset):
+    ''' Construct the FM pytorch dataset. '''
+    def __init__(self, file, feature_map, loss_type='square_loss'):
+        super(FMData, self).__init__()
+        self.label = []
+        self.features = []
+        self.feature_values = []
+        assert loss_type in ['square_loss', 'log_loss']
+
+        with open(file, 'r') as fd:
+            line = fd.readline()
+
+            while line:
+                items = line.strip().split()
+                # convert features
+                raw = [item.split(':')[0] for item in items[1:]]
+                self.features.append(np.array([feature_map[item] for item in raw]))
+                self.feature_values.append(np.array([item.split(':')[1] for item in items[1:]], 
+                                           dtype=np.float32))
+                # convert labels
+                if loss_type == 'square_loss':
+                    self.label.append(np.float32(items[0]))
+                else: # log_loss
+                    label = 1 if float(items[0]) > 0 else 0
+                    self.label.append(label)
+
+                line = fd.readline()
+        assert all(len(item) == len(self.features[0]) for item in self.features), 'features are of different length'
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        label = self.label[idx]
+        features = self.features[idx]
+        feature_values = self.feature_values[idx]
+        return features, feature_values, label
+
+###############
 
 def _split_loo(ratings):
     ratings['rank_latest'] = ratings.groupby(['user'])['timestamp'].rank(method='first', 
