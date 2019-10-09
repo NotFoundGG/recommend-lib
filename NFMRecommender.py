@@ -254,6 +254,8 @@ if __name__ == '__main__':
     activation_function = args.act_func
     assert activation_function in ['relu', 'sigmoid', 'tanh', 'identity']
 
+    assert args.crit in ['square_loss', 'log_loss']
+
     if args.pre_train:
         assert os.path.exists(model_path + 'FM.pt'), 'lack of FM model'
         assert args.model == 'NFM', 'only support NFM for now'
@@ -278,5 +280,15 @@ if __name__ == '__main__':
         optimizer = optim.SGD(model.parameters(), lr=args.lr)
     elif opt == 'Momentum':
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.95)
+
+    if args.crit == 'square_loss':
+        criterion = nn.MSELoss(reduction='sum')
+    else:
+        criterion = nn.BCEWithLogitsLoss(reduction='sum')
+
+    count, best_rmse = 0, 100
+    for epoch in range(args.epochs):
+        model.train() # Enable dropout and batch_norm
+        start_time = time.time()
 
     
