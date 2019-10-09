@@ -22,18 +22,18 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
 from util.metrics import metrics
-from util.data_loader import load_libfm, map_features
+from util.data_loader import load_libfm, map_features, FMData
 
 class NFM(nn.Module):
     def __init__(self, num_features, num_factors, act_function, layers, batch_norm, drop_prob, pretrain_FM):
         '''
         num_features: number of features,
-		num_factors: number of hidden factors,
-		act_function: activation function for MLP layer,
-		layers: list of dimension of deep layers,
-		batch_norm: bool type, whether to use batch norm or not,
-		drop_prob: list of the dropout rate for FM and MLP,
-		pretrain_FM: the pre-trained FM weights.
+        num_factors: number of hidden factors,
+        act_function: activation function for MLP layer,
+        layers: list of dimension of deep layers,
+        batch_norm: bool type, whether to use batch norm or not,
+        drop_prob: list of the dropout rate for FM and MLP,
+        pretrain_FM: the pre-trained FM weights.
         '''
         super(NFM, self).__init__()
         self.num_features = num_features
@@ -125,9 +125,9 @@ class FM(nn.Module):
     def __init__(self, num_features, num_factors, batch_norm, drop_prob):
         '''
         num_features: number of features,
-		num_factors: number of hidden factors,
-		batch_norm: bool type, whether to use batch norm or not,
-		drop_prob: list of the dropout rate for FM and MLP,
+        num_factors: number of hidden factors,
+        batch_norm: bool type, whether to use batch norm or not,
+        drop_prob: list of the dropout rate for FM and MLP,
         '''
         super(FM, self).__init__()
         self.num_features = num_features
@@ -211,5 +211,72 @@ if __name__ == '__main__':
                         type=str, 
                         default='0', 
                         help='gpu card ID')
+    parser.add_argument('--model', 
+                        type=str, 
+                        default='NFM',
+                        help='model type, NFM or FM')
+    parser.add_argument('--act_func', 
+                        type=str, 
+                        default='relu', 
+                        help='type of activate function')
+    parser.add_argument('--opt', 
+                        type=str, 
+                        default='Adagrad', 
+                        help='type of optimizer')
+    parser.add_argument('--crit', type=str, default='square_loss', help='square_loss or log_loss')
+
     args = parser.parse_args()
 
+
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    cudnn.benchmark = True
+
+    ### prepare dataset ###
+    src = 'ml-100k'
+    features_map, num_features = map_features(src)
+
+    train_dataset = FMData(f'./data/{src}/{src}.train.libfm', features_map)
+    valid_dataset = FMData(f'./data/{src}/{src}.valid.libfm', features_map)
+    test_dataset = FMData(f'./data/{src}/{src}.test.libfm', features_map)
+
+    train_loader = data.DataLoader(train_dataset, drop_last=True, batch_size=args.batch_size, 
+                                   shuffle=True, num_workers=4)
+    valid_loader = data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
+    test_loader = data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
+
+    ### create model ###
+    model_path = './models/'
+    assert args.model in ['FM', 'NFM'], 'invalid model type'
+
+    opt = args.opt
+    assert opt in ['Adagrad', 'Adam', 'SGD', 'Momentum']
+
+    activation_function = args.act_func
+    assert activation_function in ['relu', 'sigmoid', 'tanh', 'identity']
+
+    if args.pre_train:
+        assert os.path.exists(model_path + 'FM.pt'), 'lack of FM model'
+        assert args.model == 'NFM', 'only support NFM for now'
+        FM_model = torch.load(model_path + 'FM.pt')
+    else:
+        FM_model = None
+
+    if args.model == 'FM':
+        model = FM(num_features, args.hidden_factor, args.batch_norm, eval(args.dropout))
+    else:
+        model = NFM(num_features, args.hidden_factor, activation_function, eval(args.layers), 
+                    args.batch_norm, eval(args.dropout), FM_model)
+    
+    model.cuda()
+
+    if opt == 'Adagrad':
+            optimizer = optim.Adagrad(
+            model.parameters(), lr=args.lr, initial_accumulator_value=1e-8)
+    elif opt == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    elif opt == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr)
+    elif opt == 'Momentum':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.95)
+
+    

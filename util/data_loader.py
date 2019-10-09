@@ -60,6 +60,26 @@ def load_features(src='ml-100k'):
 def load_libfm(src='ml-100k'):
     df = load_rate(src)
 
+    if src == 'ml-100k':
+        user_info = pd.read_csv(f'./data/{src}/u.user', sep='|', header=None, engine='python', 
+                                names=['user', 'age', 'gender', 'occupation', 'zip_code'])
+        item_info = pd.read_csv(f'./data/{src}/u.item', sep='|', header=None, engine='python',
+                                names=['item', 'movie_title', 'release_date', 'video_release_date', 
+                                    'IMDb_URL', 'unknown', 'Action', 'Adventure', 'Animation', 
+                                    'Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 
+                                    'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
+                                    'Thriller', 'War', 'Western'])
+
+        df = df.merge(user_info, on='user', how='left').merge(item_info, on='item', how='left')
+        df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
+                 'zip_code', 'timestamp', 'release_date'], axis=1, inplace=True)
+
+        # rating >=4 interaction =1
+        df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1)
+
+
+        
+
 def read_features(file, features):
     ''' Read features from the given file. '''
     i = len(features)
@@ -78,6 +98,7 @@ def read_features(file, features):
 def map_features(src='ml-100k'):
     features = {}
     features = read_features(f'./data/{src}/{src}.train.libfm', features)
+    features = read_features(f'./data/{src}/{src}.valid.libfm', features)
     features = read_features(f'./data/{src}/{src}.test.libfm', features)
     print(f'number of features: {len(features)}')
 
