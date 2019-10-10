@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-09 23:17:24
+@LastEditTime: 2019-10-10 23:11:52
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -226,7 +226,6 @@ if __name__ == '__main__':
     parser.add_argument('--crit', type=str, default='square_loss', help='square_loss or log_loss')
 
     args = parser.parse_args()
-
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
