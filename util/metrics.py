@@ -153,7 +153,7 @@ def ndcg_at_k(r, k):
 
 # NFM train metric
 def metrics(model, dataloader):
-        RMSE = np.array([], dtype=np.float32)
+    RMSE = np.array([], dtype=np.float32)
     for features, feature_values, label in dataloader:
         features = features.cuda()
         feature_values = feature_values.cuda()
