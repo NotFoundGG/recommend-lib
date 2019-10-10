@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-01 18:21:47
+@LastEditTime: 2019-10-10 21:45:11
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -75,9 +75,56 @@ def load_libfm(src='ml-100k'):
                  'zip_code', 'timestamp', 'release_date'], axis=1, inplace=True)
 
         # rating >=4 interaction =1
-        df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1)
+        df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
 
+        df['user'] = pd.Categorical(df.user).codes
+        df['item'] = pd.Categorical(df.item).codes
+        df['gender'] = pd.Categorical(df.gender).codes
+        df['occupation'] = pd.Categorical(df.occupation).codes
+        df = df[[col for col in df.columns if col not in ML100K_NUMERIC_COLS]].copy()
 
+    feat_idx_dict = {} # 存储各个category特征的起始索引位置
+    idx = 0
+    for col in df.columns:
+        if col != 'rating':
+            feat_idx_dict[col] = idx
+            idx = idx + df[col].max() + 1
+
+    train, test = train_test_split(df, test_size=0.1)
+    train, valid = train_test_split(train, test_size=0.1)
+
+    file_obj = open(f'./data/{src}/{src}.train.libfm', 'w')
+    for idx, row in train.iterrows():
+        l = ''
+        for col in df.columns:
+            if col != 'rating':
+                l += ' '
+                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+        l = str(row['rating']) + l + '\n'
+        file_obj.write(l)
+    file_obj.close()
+
+    file_obj = open(f'./data/{src}/{src}.test.libfm', 'w')
+    for idx, row in test.iterrows():
+        l = ''
+        for col in df.columns:
+            if col != 'rating':
+                l += ' '
+                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+        l = str(row['rating']) + l + '\n'
+        file_obj.write(l)
+    file_obj.close()
+
+    file_obj = open(f'./data/{src}/{src}.valid.libfm', 'w')
+    for idx, row in valid.iterrows():
+        l = ''
+        for col in df.columns:
+            if col != 'rating':
+                l += ' '
+                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+        l = str(row['rating']) + l + '\n'
+        file_obj.write(l)
+    file_obj.close()
         
 
 def read_features(file, features):
