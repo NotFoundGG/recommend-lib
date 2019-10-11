@@ -167,7 +167,7 @@ class FMData(data.Dataset):
                 items = line.strip().split()
                 # convert features
                 raw = [item.split(':')[0] for item in items[1:]]
-                self.features.append(np.array([feature_map[item] for item in raw]))
+                self.features.append(np.array([feature_map[item] for item in raw], dtype=np.int64))
                 self.feature_values.append(np.array([item.split(':')[1] for item in items[1:]], 
                                            dtype=np.float32))
                 # convert labels
