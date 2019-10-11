@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-10 23:11:52
+@LastEditTime: 2019-10-11 18:47:34
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
 
-    device = torch.device('cpu') # turn to cpu mode
+    # device = torch.device('cpu') # turn to cpu mode
 
     ### prepare dataset ###
     src = 'ml-100k'
@@ -270,8 +270,8 @@ if __name__ == '__main__':
         model = NFM(num_features, args.hidden_factor, activation_function, eval(args.layers), 
                     args.batch_norm, eval(args.dropout), FM_model)
     
-    # model.cuda()
-    model.to(device)
+    model.cuda()
+    # model.to(device)
 
     if opt == 'Adagrad':
             optimizer = optim.Adagrad(
@@ -294,12 +294,12 @@ if __name__ == '__main__':
         start_time = time.time()
         
         for features, feature_values, label in train_loader:
-            # features = features.cuda()
-            # feature_values = feature_values.cuda()
-            # label = label.cuda()
-            features = features.to(device)
-            feature_values = feature_values.to(device)
-            label = label.to(device)
+            features = features.cuda()
+            feature_values = feature_values.cuda()
+            label = label.cuda()
+            # features = features.to(device)
+            # feature_values = feature_values.to(device)
+            # label = label.to(device)
 
             model.zero_grad()
             prediction = model(features, feature_values)

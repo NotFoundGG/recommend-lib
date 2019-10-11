@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 15:07:17
+@LastEditTime: 2019-10-11 18:46:57
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -153,15 +153,15 @@ def ndcg_at_k(r, k):
 
 # NFM train metric
 def metrics(model, dataloader):
-    device = torch.device('cpu')
+    # device = torch.device('cpu')
     RMSE = np.array([], dtype=np.float32)
     for features, feature_values, label in dataloader:
-        # features = features.cuda()
-        # feature_values = feature_values.cuda()
-        # label = label.cuda()
-        features = features.to(device)
-        feature_values = feature_values.to(device)
-        label = label.to(device)
+        features = features.cuda()
+        feature_values = feature_values.cuda()
+        label = label.cuda()
+        # features = features.to(device)
+        # feature_values = feature_values.to(device)
+        # label = label.to(device)
 
         prediction = model(features, feature_values)
         prediction = prediction.clamp(min=-1.0, max=1.0)
