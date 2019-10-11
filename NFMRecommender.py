@@ -325,6 +325,6 @@ if __name__ == '__main__':
             if args.out:
                 if not os.path.exists(model_path):
                     os.mkdir(model_path)
-                torch.save(model, f'{model_path}{args.model}.pt')
+                torch.save(model, f'{model_path}{src}/{args.model}.pt')
     print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
     
