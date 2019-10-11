@@ -230,6 +230,8 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
 
+    device = torch.device('cpu') # turn to cpu mode
+
     ### prepare dataset ###
     src = 'ml-100k'
     features_map, num_features = map_features(src)
@@ -268,7 +270,8 @@ if __name__ == '__main__':
         model = NFM(num_features, args.hidden_factor, activation_function, eval(args.layers), 
                     args.batch_norm, eval(args.dropout), FM_model)
     
-    model.cuda()
+    # model.cuda()
+    model.to(device)
 
     if opt == 'Adagrad':
             optimizer = optim.Adagrad(
@@ -291,9 +294,12 @@ if __name__ == '__main__':
         start_time = time.time()
         
         for features, feature_values, label in train_loader:
-            features = features.cuda()
-            feature_values = feature_values.cuda()
-            label = label.cuda()
+            # features = features.cuda()
+            # feature_values = feature_values.cuda()
+            # label = label.cuda()
+            features = features.to(device)
+            feature_values = feature_values.to(device)
+            label = label.to(device)
 
             model.zero_grad()
             prediction = model(features, feature_values)
