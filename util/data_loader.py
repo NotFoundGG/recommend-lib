@@ -2,13 +2,14 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-13 11:11:57
+@LastEditTime: 2019-10-13 11:22:01
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
 '''
 import os
 import random
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -100,6 +101,10 @@ def load_libfm(src='ml-100k'):
     train, valid = train_test_split(train, test_size=0.1)
 
     test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
+    ui = test[['user', 'item']].copy()
+    u_is = defaultdict(list)
+    for u in test_user_set:
+        u_is[u] = ui.loc[ui.user==u, 'item'].values.tolist()
 
     file_obj = open(f'./data/{src}/{src}.train.libfm', 'w')
     for idx, row in train.iterrows():
@@ -134,7 +139,7 @@ def load_libfm(src='ml-100k'):
         file_obj.write(l)
     file_obj.close()
 
-    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set
+    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is
         
 
 def read_features(file, features):

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-13 11:13:21
+@LastEditTime: 2019-10-13 11:22:18
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
     ### prepare dataset ###
     src = 'ml-100k'
-    feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set = load_libfm(src)
+    feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, ground_truth = load_libfm(src)
     features_map, num_features = map_features(src)
 
     train_dataset = FMData(f'./data/{src}/{src}.train.libfm', features_map)
