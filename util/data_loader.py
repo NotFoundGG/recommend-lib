@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-10 21:45:11
+@LastEditTime: 2019-10-13 11:11:57
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -23,8 +23,9 @@ IGNORE_COLS = ['user', 'item']
 TARGET_COLS = ['rating']
 
 def load_rate(src='ml-100k'):
-    df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
-                     names=['user', 'item', 'rating', 'timestamp'], engine='python')
+    if src == 'ml-100k':
+        df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
+                        names=['user', 'item', 'rating', 'timestamp'], engine='python')
 
     return df
 
@@ -83,6 +84,11 @@ def load_libfm(src='ml-100k'):
         df['occupation'] = pd.Categorical(df.occupation).codes
         df = df[[col for col in df.columns if col not in ML100K_NUMERIC_COLS]].copy()
 
+        user_tag_info = df[['user', 'gender', 'occupation']].copy()
+        item_tag_info = df[['item', 'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy', 
+                            'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 
+                            'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']].copy()
+
     feat_idx_dict = {} # 存储各个category特征的起始索引位置
     idx = 0
     for col in df.columns:
@@ -92,6 +98,8 @@ def load_libfm(src='ml-100k'):
 
     train, test = train_test_split(df, test_size=0.1)
     train, valid = train_test_split(train, test_size=0.1)
+
+    test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
 
     file_obj = open(f'./data/{src}/{src}.train.libfm', 'w')
     for idx, row in train.iterrows():
@@ -125,6 +133,8 @@ def load_libfm(src='ml-100k'):
         l = str(row['rating']) + l + '\n'
         file_obj.write(l)
     file_obj.close()
+
+    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set
         
 
 def read_features(file, features):

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-11 18:47:34
+@LastEditTime: 2019-10-13 11:13:21
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -234,6 +234,7 @@ if __name__ == '__main__':
 
     ### prepare dataset ###
     src = 'ml-100k'
+    feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set = load_libfm(src)
     features_map, num_features = map_features(src)
 
     train_dataset = FMData(f'./data/{src}/{src}.train.libfm', features_map)
@@ -327,4 +328,7 @@ if __name__ == '__main__':
                     os.mkdir(model_path)
                 torch.save(model, f'{model_path}{src}/{args.model}.pt')
     print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
+
+
+    # predict test set and calculate KPI
     
