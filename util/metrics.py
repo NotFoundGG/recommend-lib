@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-10-15 14:44:07
+@LastEditTime: 2019-10-15 15:49:14
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -48,8 +48,7 @@ def _bpr_topk(model, test_loader, top_k):
 
         prediction_i, _ = model(user, item_i, item_j)
         _, indices = torch.topk(prediction_i, top_k)
-        recommends = torch.take(
-                item_i, indices).cpu().numpy().tolist()
+        recommends = torch.take(item_i, indices).cpu().numpy().tolist()
         gt_item = item_i[0].item()
         
         HR.append(hit(gt_item, recommends))
@@ -70,8 +69,7 @@ def _ncf_topk(model, test_loader, top_k):
 
         predictions = model(user, item)
         _, indices = torch.topk(predictions, top_k)
-        recommends = torch.take(
-                item, indices).cpu().numpy().tolist()
+        recommends = torch.take(item, indices).cpu().numpy().tolist()
 
         gt_item = item[0].item()
         HR.append(hit(gt_item, recommends))
