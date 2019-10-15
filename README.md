@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-12 09:22:49
+ * @LastEditTime: 2019-10-15 15:44:04
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -13,7 +13,7 @@
 1. you can also download experiment data from links below: 
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
 
-2. Item-Ranking recommendation algorithms reimplementation with pytorch-gpu, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit and [deepctr-torch](https://github.com/shenweichen/DeepCTR-Torch).
+2. Item-Ranking recommendation algorithms reimplementation with pytorch-gpu, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit.
 
 ## The requirements are as follows:
 
@@ -36,7 +36,6 @@ python UserKNNRecommnder.py
 python BPRMFRecommender.py --factor_num=16
 python NCFRecommnder.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
 python NFMRecommender.py --batch_size=128 --lr=0.05 --hidden_factor=128
-python DeepFMRecommender.py
 ```
 
 Help message will give you more detail description for arguments, For example:
@@ -48,4 +47,4 @@ python NFMRecommender.py --help
 ## Implementation detail
 
 - you need to add corresponding dataset file into **data** folder
-- make sure you have a **CUDA** enviroment since these deep-learning models are based on it.
+- make sure you have a **CUDA** enviroment to accelarate since these deep-learning models are based on it.
