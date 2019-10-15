@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-10-08 23:55:11
+@LastEditTime: 2019-10-15 16:26:40
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Item-KNN recommender
@@ -62,6 +62,7 @@ if __name__ == '__main__':
     item_pool = test_set.item.unique().tolist()
 
     max_i_num = test_set.groupby('user')['item'].count().max()
+    max_i_num = 50 if max_i_num <= 50 else max_i_num
 
     for key, val in test_u_is.items():
         cands_num = max_i_num - len(val)
