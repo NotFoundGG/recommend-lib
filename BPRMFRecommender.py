@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:56:31
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:40:30
+@LastEditTime: 2019-10-15 14:38:00
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: BPR recommender
@@ -103,7 +103,10 @@ if __name__ == '__main__':
     test_loader = data.DataLoader(test_dataset, batch_size=args.test_num_ng + 1, 
                                   shuffle=False, num_workers=0)
     model = BPR(user_num, item_num, args.factor_num)
-    model.cuda()
+    if torch.cuda.is_available():
+        model.cuda()
+    else:
+        model.cpu()
     
     optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
     
@@ -114,9 +117,14 @@ if __name__ == '__main__':
         train_loader.dataset.ng_sample()
 
         for user, item_i, item_j in train_loader:
-            user = user.cuda()
-            item_i = item_i.cuda()
-            item_j = item_j.cuda()
+            if torch.cuda.is_available():
+                user = user.cuda()
+                item_i = item_i.cuda()
+                item_j = item_j.cuda()
+            else:
+                user = user.cpu()
+                item_i = item_i.cpu()
+                item_j = item_j.cpu()
 
             model.zero_grad()
             pred_i, pred_j = model(user, item_i, item_j)

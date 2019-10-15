@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 15:51:22
+@LastEditTime: 2019-10-15 14:42:56
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -203,7 +203,11 @@ if __name__ == '__main__':
 
     model = NCF(user_num, item_num, args.factor_num, args.num_layers, args.dropout, 
                 model_name, GMF_model, MLP_model)
-    model.cuda()
+
+    if torch.cuda.is_available():
+        model.cuda()
+    else:
+        model.cpu()
 
     loss_function = nn.BCEWithLogitsLoss()
     
@@ -219,9 +223,14 @@ if __name__ == '__main__':
         train_loader.dataset.ng_sample()
 
         for user, item, label in train_loader:
-            user = user.cuda()
-            item = item.cuda()
-            label = label.float().cuda()
+            if torch.cuda.is_available():
+                user = user.cuda()
+                item = item.cuda()
+                label = label.float().cuda()
+            else:
+                user = user.cpu()
+                item = item.cpu()
+                label = label.float().cpu()
 
             model.zero_grad()
             prediction = model(user, item)

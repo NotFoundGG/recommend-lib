@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-10-11 18:46:57
+@LastEditTime: 2019-10-15 14:44:07
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -37,9 +37,14 @@ def ndcg(gt_item, pred_items):
 def _bpr_topk(model, test_loader, top_k):
     HR, NDCG, MAP = [], [], []
     for user, item_i, item_j in test_loader:
-        user = user.cuda()
-        item_i = item_i.cuda()
-        item_j = item_j.cuda() # not useful when testing
+        if torch.cuda.is_available():
+            user = user.cuda()
+            item_i = item_i.cuda()
+            item_j = item_j.cuda() # not useful when testing
+        else:
+            user = user.cpu()
+            item_i = item_i.cpu()
+            item_j = item_j.cpu()
 
         prediction_i, _ = model(user, item_i, item_j)
         _, indices = torch.topk(prediction_i, top_k)
@@ -56,8 +61,12 @@ def _bpr_topk(model, test_loader, top_k):
 def _ncf_topk(model, test_loader, top_k):
     HR, NDCG, MAP = [], [], []
     for user, item, _ in test_loader: # _ is label
-        user = user.cuda()
-        item = item.cuda()
+        if torch.cuda.is_available():
+            user = user.cuda()
+            item = item.cuda()
+        else:
+            user = user.cpu()
+            item = item.cpu()
 
         predictions = model(user, item)
         _, indices = torch.topk(predictions, top_k)
@@ -152,16 +161,18 @@ def ndcg_at_k(r, k):
     return dcg_at_k(r, k) / idcg
 
 # NFM train metric
-def metrics(model, dataloader):
+def metrics_nfm(model, dataloader):
     # device = torch.device('cpu')
     RMSE = np.array([], dtype=np.float32)
     for features, feature_values, label in dataloader:
-        features = features.cuda()
-        feature_values = feature_values.cuda()
-        label = label.cuda()
-        # features = features.to(device)
-        # feature_values = feature_values.to(device)
-        # label = label.to(device)
+        if torch.cuda.is_available():
+            features = features.cuda()
+            feature_values = feature_values.cuda()
+            label = label.cuda()
+        else:
+            features = features.cpu()
+            feature_values = feature_values.cpu()
+            label = label.cpu()
 
         prediction = model(features, feature_values)
         prediction = prediction.clamp(min=-1.0, max=1.0)

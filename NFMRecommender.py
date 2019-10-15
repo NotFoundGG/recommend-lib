@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-13 11:22:18
+@LastEditTime: 2019-10-15 14:44:32
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -21,7 +21,7 @@ import torch.utils.data as data
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
-from util.metrics import metrics
+from util.metrics import metrics_nfm
 from util.data_loader import load_libfm, map_features, FMData
 
 class NFM(nn.Module):
@@ -271,7 +271,10 @@ if __name__ == '__main__':
         model = NFM(num_features, args.hidden_factor, activation_function, eval(args.layers), 
                     args.batch_norm, eval(args.dropout), FM_model)
     
-    model.cuda()
+    # model.cuda()
+    if torch.cuda.is_available():
+        model.cuda()
+    model.cpu()
     # model.to(device)
 
     if opt == 'Adagrad':
@@ -295,12 +298,14 @@ if __name__ == '__main__':
         start_time = time.time()
         
         for features, feature_values, label in train_loader:
-            features = features.cuda()
-            feature_values = feature_values.cuda()
-            label = label.cuda()
-            # features = features.to(device)
-            # feature_values = feature_values.to(device)
-            # label = label.to(device)
+            if torch.cuda.is_available():
+                features = features.cuda()
+                feature_values = feature_values.cuda()
+                label = label.cuda()
+            else:
+                features = features.cpu()
+                feature_values = feature_values.cpu()
+                label = label.cpu()
 
             model.zero_grad()
             prediction = model(features, feature_values)
@@ -312,9 +317,9 @@ if __name__ == '__main__':
             count += 1
 
         model.eval()
-        train_result = metrics(model, train_loader)
-        valid_result = metrics(model, valid_loader)
-        test_result = metrics(model, test_loader)
+        train_result = metrics_nfm(model, train_loader)
+        valid_result = metrics_nfm(model, valid_loader)
+        test_result = metrics_nfm(model, test_loader)
 
         print('Runing Epoch {:03d} costs '.format(epoch) + time.strftime('%H: %M: %S', 
                                                                          time.gmtime(time.time() - start_time)))
