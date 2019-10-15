@@ -2,11 +2,12 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-10-15 16:26:40
+@LastEditTime: 2019-10-15 16:53:18
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Item-KNN recommender
 '''
+import random
 import argparse
 
 import numpy as np
@@ -66,7 +67,8 @@ if __name__ == '__main__':
 
     for key, val in test_u_is.items():
         cands_num = max_i_num - len(val)
-        cands = np.random.choice(item_pool, cands_num).astype(int)
+        # cands = np.random.choice(item_pool, cands_num).astype(int)
+        cands = random.sample(item_pool, cands_num)
         test_u_is[key].update(set(cands))
     
     # get top-N list for test users
