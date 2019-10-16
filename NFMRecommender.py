@@ -2,17 +2,19 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-15 14:44:32
+@LastEditTime: 2019-10-16 16:48:24
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
 '''
 import os
 import time
+import random
 import argparse
 
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 
 import torch
 import torch.nn as nn
@@ -21,7 +23,7 @@ import torch.utils.data as data
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
-from util.metrics import metrics_nfm
+from util.metrics import metrics_nfm, mean_average_precision, ndcg_at_k, hr_at_k
 from util.data_loader import load_libfm, map_features, FMData
 
 class NFM(nn.Module):
@@ -223,7 +225,14 @@ if __name__ == '__main__':
                         type=str, 
                         default='Adagrad', 
                         help='type of optimizer')
-    parser.add_argument('--crit', type=str, default='square_loss', help='square_loss or log_loss')
+    parser.add_argument('--crit', 
+                        type=str, 
+                        default='square_loss', 
+                        help='square_loss or log_loss')
+    parser.add_argument('--top_k', 
+                        type=str, 
+                        default=10, 
+                        help='Top K number')
 
     args = parser.parse_args()
 
@@ -336,4 +345,65 @@ if __name__ == '__main__':
 
 
     # predict test set and calculate KPI
+    top_k = args.top_k
+    # top_k = 10
+    test_u_is = defaultdict(set)
+    for key, val in ground_truth.items():
+        test_u_is[key] = set(val)
+
+    max_i_num = max([len(v) for v in test_u_is.values()])
+    max_i_num = 50 if max_i_num <= 50 else max_i_num
+
+    preds = {}
+    for u in test_user_set:
+        # construct candidates set
+        actual_i_list = ground_truth[u]
+        cands_num = max_i_num - len(actual_i_list)
+        cands = random.sample(test_item_set, cands_num)
+        test_u_is[u] = test_u_is[u] | set(cands)
+        candidates = list(test_u_is[u])
+
+        df = pd.DataFrame({'user': [u for _ in test_u_is[u]], 'item': list(test_u_is[u])})
+        df = df.merge(user_tag_info, on='user', how='left').merge(item_tag_info, on='item', how='left')
+
+        file_obj = open(f'./tmp.test.libfm', 'w')
+        for idx, row in df.iterrows():
+            l = ''
+            for col in feat_idx_dict.keys():
+                if col != 'rating':
+                    l += ' '
+                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+            l = str(0) + l + '\n'
+            file_obj.write(l)
+        file_obj.close()
+
+        test_dataset = FMData(f'./tmp.test.libfm', features_map)
+        test_loader = data.DataLoader(test_dataset, batch_size=max_i_num, shuffle=False, num_workers=0)
+
+        for features, feature_values, _ in test_loader:
+            if torch.cuda.is_available():
+                features = features.cuda()
+                feature_values = feature_values.cuda()
+            else:
+                features = features.cpu()
+                feature_values = feature_values.cpu()
+
+            prediction = model(features, feature_values)
+            prediction = prediction.clamp(min=-1.0, max=1.0)
+
+            _, indices = torch.topk(prediction, 10)
+            recommends = torch.take(torch.tensor(candidates), indices).cpu().numpy().tolist()
+
+        preds[u] = recommends
+        preds[u] = [1 if e in ground_truth[u] else 0 for e in preds[u]]
     
+    
+    # calculate metrics
+    map_k = mean_average_precision(list(preds.values()))
+    print(f'MAP@{top_k}: {map_k}')
+
+    ndcg_k = np.mean([ndcg_at_k(r, top_k) for r in preds.values()])
+    print(f'NDCG@{top_k}: {ndcg_k}')
+
+    hr_k = hr_at_k(list(preds.values()))
+    print(f'HR@{top_k}: {hr_k}')

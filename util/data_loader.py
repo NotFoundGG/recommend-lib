@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-13 11:22:01
+@LastEditTime: 2019-10-16 16:30:51
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -89,6 +89,8 @@ def load_libfm(src='ml-100k'):
         item_tag_info = df[['item', 'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy', 
                             'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 
                             'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']].copy()
+        user_tag_info = user_tag_info.drop_duplicates()
+        item_tag_info = item_tag_info.drop_duplicates()
 
     feat_idx_dict = {} # 存储各个category特征的起始索引位置
     idx = 0
