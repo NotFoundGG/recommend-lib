@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-16 17:25:24
+ * @LastEditTime: 2019-10-16 18:15:29
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -47,3 +47,14 @@ python NFMRecommender.py --help
 
 - you need to add corresponding dataset file into **data** folder
 - make sure you have a **CUDA** enviroment to accelarate since these deep-learning models are based on it.
+
+## Result Achieved
+
+| Algo | HR@10 | NDCG@10 | MAP@10 |
+| ------ | ------ | ------ | -- |
+| NeuFM | 0.214  | 0.453 | 0.119 |
+| NeuMF | 0.698  | 0.401 | 0.310 |
+| BPR | 0.705 | 0.407 | 0.315 |
+| UserKNN | 0.141  | 0.341 | 0.069 |
+| ItemKNN | 0.153  | 0.351 | 0.079 |
+| Pop | 0.101  | 0.338 | 0.040 |
