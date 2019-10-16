@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-16 16:48:24
+@LastEditTime: 2019-10-16 17:27:52
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -355,6 +355,7 @@ if __name__ == '__main__':
     max_i_num = 50 if max_i_num <= 50 else max_i_num
 
     preds = {}
+    tmp_file_name = f'./tmp.test.libfm'
     for u in test_user_set:
         # construct candidates set
         actual_i_list = ground_truth[u]
@@ -366,7 +367,7 @@ if __name__ == '__main__':
         df = pd.DataFrame({'user': [u for _ in test_u_is[u]], 'item': list(test_u_is[u])})
         df = df.merge(user_tag_info, on='user', how='left').merge(item_tag_info, on='item', how='left')
 
-        file_obj = open(f'./tmp.test.libfm', 'w')
+        file_obj = open(tmp_file_name, 'w')
         for idx, row in df.iterrows():
             l = ''
             for col in feat_idx_dict.keys():
@@ -377,7 +378,7 @@ if __name__ == '__main__':
             file_obj.write(l)
         file_obj.close()
 
-        test_dataset = FMData(f'./tmp.test.libfm', features_map)
+        test_dataset = FMData(tmp_file_name, features_map)
         test_loader = data.DataLoader(test_dataset, batch_size=max_i_num, shuffle=False, num_workers=0)
 
         for features, feature_values, _ in test_loader:
@@ -407,3 +408,6 @@ if __name__ == '__main__':
 
     hr_k = hr_at_k(list(preds.values()))
     print(f'HR@{top_k}: {hr_k}')
+
+    if os.path.exists(tmp_file_name):
+        os.remove(tmp_file_name)
