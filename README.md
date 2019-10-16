@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-15 15:44:04
+ * @LastEditTime: 2019-10-16 17:25:24
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -23,7 +23,6 @@
 * pytorch>=1.0.1
 * sklearn>=0.21.3
 * surprise==1.1.0
-* deepctr-torch==0.1.2
 
 ## Examples to run:
 
