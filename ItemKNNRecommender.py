@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-10-15 16:53:18
+@LastEditTime: 2019-10-16 16:25:57
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Item-KNN recommender
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         cands_num = max_i_num - len(val)
         # cands = np.random.choice(item_pool, cands_num).astype(int)
         cands = random.sample(item_pool, cands_num)
-        test_u_is[key].update(set(cands))
+        test_u_is[key] = test_u_is[key] | set(cands)
     
     # get top-N list for test users
     preds = {}
