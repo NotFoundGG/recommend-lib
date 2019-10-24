@@ -56,12 +56,12 @@ python NFMRecommender.py --help
 | UserKNN | 0.141  | 0.341 | 0.069 |
 | ItemKNN | 0.153  | 0.351 | 0.079 |
 | SLiM | - | - | - |
-| PMF | - | - | - |
+| NMF | - | - | - |
 | PureSVD | - | - | - |
 | SVD | - | - | - |
 | SVD++ | - | - | - |
 | WRMF | - | - | - |
 | BPR-MF | 0.705 | 0.407 | 0.315 |
 | NeuMF | 0.698  | 0.401 | 0.310 |
-| FM | - | - | - |
+| FM | 0.209 | 0.451 | 0.119 |
 | NeuFM(deprecated) | 0.214  | 0.453 | 0.119 |
