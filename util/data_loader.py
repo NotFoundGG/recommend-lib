@@ -16,12 +16,66 @@ import pandas as pd
 import scipy.sparse as sp
 import torch
 import torch.utils.data as data
+from scipy.sparse import csr_matrix, coo_matrix
+from scipy.io import mmread
 
 from sklearn.model_selection import train_test_split
 
 ML100K_NUMERIC_COLS = ['age']
 IGNORE_COLS = ['user', 'item']
 TARGET_COLS = ['rating']
+
+# SLIM data loader 
+class SlimData(object):
+    def __init__(self, src='ml-100k'):
+        path = None
+        seperator = None
+        if src == 'ml-100k':
+            path = f'./data/{src}/u.data'
+            seperator = '\t'
+        elif src == 'ml-1m':
+            pass
+
+        print('Start read raw data')
+        self.data = []
+        for line in open(path, 'r'):
+            data_line = line.split(seperator)
+            userID = int(data_line[0])
+            movieID = int(data_line[1])
+            self.data.append([userID, movieID])
+        
+        def compress(data, col):
+            e_rows = dict()
+            for i in range(len(data)):
+                e = data[i][col]
+                if e not in e_rows:
+                    e_rows[e] = []
+                e_rows[e].append(i)
+
+            for rows, i in zip(e_rows.values(), range(len(e_rows))):
+                for row in rows:
+                    data[row][col] = i
+
+            return len(e_rows)
+
+        self.num_user = compress(self.data, 0)
+        self.num_item = compress(self.data, 1)
+
+        self.train, self.test = self.__split_data()
+        print(f'{len(self.data)} data records, train set: {len(self.train)}, \
+                 test set: {len(self.test)}, user num: {self.num_user}, item num: {self.num_item}')
+    
+    def __split_data(self):
+        '''without time stemp'''
+        test = []
+        train = []
+        for u, i in self.data:
+            if random.randint(1, 4) == 1:
+                test.append([u, i])
+            else:
+                train.append([u, i])
+        return train, test
+########################################################################################################
 
 def load_rate(src='ml-100k'):
     if src == 'ml-100k':
@@ -30,35 +84,7 @@ def load_rate(src='ml-100k'):
 
     return df
 
-#########################  #TODO ######## delete in future, use for DeepFM
-def load_features(src='ml-100k'):
-    '''load for FM'''
-    df = load_rate(src)
-    
-    user_info = pd.read_csv(f'./data/{src}/u.user', sep='|', header=None, engine='python', 
-                            names=['user', 'age', 'gender', 'occupation', 'zip_code'])
-    item_info = pd.read_csv(f'./data/{src}/u.item', sep='|', header=None, engine='python',
-                            names=['item', 'movie_title', 'release_date', 'video_release_date', 
-                                   'IMDb_URL', 'unknown', 'Action', 'Adventure', 'Animation', 
-                                   'Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 
-                                   'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
-                                   'Thriller', 'War', 'Western'])
-
-    df = df.merge(user_info, on='user', how='left').merge(item_info, on='item', how='left')
-    df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
-             'zip_code', 'timestamp', 'release_date'], axis=1, inplace=True)
-    
-    if src == 'ml-100k':
-        numeric_cols = ML100K_NUMERIC_COLS
-    else:
-        numeric_cols = []
-    categorical_cols = [col for col in df.columns if col not in numeric_cols + IGNORE_COLS + TARGET_COLS]
-
-    df.sort_values(by=['user', 'item'], inplace=True)
-
-    return df, categorical_cols, numeric_cols
-
-# NerFM prepare
+# NeuFM prepare
 def load_libfm(src='ml-100k'):
     df = load_rate(src)
 
@@ -364,4 +390,4 @@ if __name__ == '__main__':
     file_obj.close()
 
     # load dataset with features for DeepFM, take ml-100k as an example
-    train_df, test_df, _ = load_features('ml-100k')
+    # train_df, test_df, _ = load_features('ml-100k')
