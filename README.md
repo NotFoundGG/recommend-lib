@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-28 14:58:21
+ * @LastEditTime: 2019-10-28 15:12:31
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -34,10 +34,14 @@ Default set top-K number to 10
 python MostPopRecommender.py
 python ItemKNNRecommender.py
 python UserKNNRecommnder.py
+python NMFRecommender.py
+python SVDRecommender.py
+python SVDppRecommender.py
+python SliMRecommender.py
 python BPRMFRecommender.py --factor_num=16
 python NCFRecommnder.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
 python NFMRecommender.py --batch_size=128 --lr=0.05 --model=FM
-python SliMRecommender.py
+
 ```
 
 Help message will give you more detail description for arguments, For example:
@@ -59,10 +63,10 @@ python NFMRecommender.py --help
 | UserKNN | 0.141  | 0.341 | 0.069 |
 | ItemKNN | 0.153  | 0.351 | 0.079 |
 | SLiM | 0.359 | 0.706 | 0.262 |
-| NMF | - | - | - |
+| NMF | 0.157 | 0.353 | 0.078 |
 | PureSVD | - | - | - |
 | SVD | 0.164 | 0.365 | 0.087 |
-| SVD++ | - | - | - |
+| SVD++ | 0.152 | 0.360 | 0.077 |
 | WRMF | - | - | - |
 | BPR-MF | 0.705 | 0.407 | 0.315 |
 | NeuMF | 0.698  | 0.401 | 0.310 |
