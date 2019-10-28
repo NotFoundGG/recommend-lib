@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 11:07:54
+@LastEditTime: 2019-10-28 13:36:17
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: 
@@ -133,15 +133,39 @@ class SLIM(object):
         print(f'Start calculating W matrix(alpha={self.alpha}, lambda={self.lam_bda}, max_iter={self.max_iter}, tol={self.tol})')
         self.W = self.__aggregation_coefficients()
 
-        print('Start calculating recommendation list(N={self.N})')
+        print(f'Start calculating recommendation list(N={self.N})')
         self.recommendation = self.__get_recommendation()
 
 if __name__ == '__main__':
-    src = 'ml-100k'
-    data = SlimData(src)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--topk', 
+                        type=int, 
+                        default=10, 
+                        help='top number of recommend list')
+    parser.add_argument('--alpha', 
+                        type=float, 
+                        default=0.5, 
+                        help='ratio if lasso result, 0 for ridge-regression, 1 for lasso-regression')
+    parser.add_argument('--elastic', 
+                        type=float, 
+                        default=0.02, 
+                        help='elastic net parameter')
+    parser.add_argument('--epochs', 
+                        type=int, 
+                        default=1000, 
+                        help='No. of learning iteration')
+    parser.add_argument('--tol', 
+                        type=float, 
+                        default=0.0001, 
+                        help='learning threshold')
+    args = parser.parse_args()
 
+    src = 'ml-100k'
+    slim_data= SlimData(src)
 
     start_time = time.time()
-    recommend = SLIM(data)
-    recommend.compute_recommendation()
+    recommend = SLIM(slim_data)
+    recommend.compute_recommendation(alpha=args.alpha, lam_bda=args.elastic, 
+                                     max_iter=args.epochs, tol=args.tol, N=args.topk)
+    print('Finish train model and generate topN list')
 
