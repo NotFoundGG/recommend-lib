@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-28 14:30:48
+ * @LastEditTime: 2019-10-28 14:58:21
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -58,10 +58,10 @@ python NFMRecommender.py --help
 | Pop | 0.101  | 0.338 | 0.040 |
 | UserKNN | 0.141  | 0.341 | 0.069 |
 | ItemKNN | 0.153  | 0.351 | 0.079 |
-| SLiM | 0.3592 | 0.7064 | 0.2616 |
+| SLiM | 0.359 | 0.706 | 0.262 |
 | NMF | - | - | - |
 | PureSVD | - | - | - |
-| SVD | - | - | - |
+| SVD | 0.164 | 0.365 | 0.087 |
 | SVD++ | - | - | - |
 | WRMF | - | - | - |
 | BPR-MF | 0.705 | 0.407 | 0.315 |
