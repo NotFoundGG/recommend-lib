@@ -2,10 +2,10 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 13:36:17
+@LastEditTime: 2019-10-28 14:24:10
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
-@Description: 
+@Description: SLIM recommender
 '''
 import os
 import time
@@ -16,12 +16,14 @@ import operator
 
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 from scipy.sparse import csr_matrix, coo_matrix
 from sklearn.linear_model import SGDRegressor, ElasticNet
 from concurrent.futures import ProcessPoolExecutor
 
-from util.data_loader import SlimData
 from util import slim
+from util.data_loader import SlimData
+from util.metrics import mean_average_precision, ndcg_at_k, hr_at_k
 
 class SLIM(object):
     def __init__(self, data):
@@ -169,3 +171,24 @@ if __name__ == '__main__':
                                      max_iter=args.epochs, tol=args.tol, N=args.topk)
     print('Finish train model and generate topN list')
 
+    # genereate top-N list for test user set
+    test_user_set = list({ele[0] for ele in slim_data.test})
+    ur = defaultdict(list)
+    for ele in slim_data.test:
+        ur[ele[0]].append(ele[1])
+    preds = {}
+    for u in ur.keys():
+        preds[u] = recommend.recommendation[u]
+    # kpi calculation
+    for u in preds.keys():
+        preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+
+    # calculate metrics
+    map_k = mean_average_precision(list(preds.values()))
+    print(f'MAP@{args.topk}: {map_k}')
+
+    ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
+    print(f'NDCG@{args.topk}: {ndcg_k}')
+
+    hr_k = hr_at_k(list(preds.values()))
+    print(f'HR@{args.topk}: {hr_k}')
