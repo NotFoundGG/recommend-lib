@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 14:39:48
+@LastEditTime: 2019-10-28 14:47:49
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
@@ -42,14 +42,15 @@ if __name__ == '__main__':
 
     k = args.N
 
-    df = load_rate('ml-100k')
+    src = 'ml-100k'
+    df = load_rate(src)
 
     reader = Reader(rating_scale=(1, 5))
     data = Dataset.load_from_df(df=df[['user', 'item', 'rating']], reader=reader)
     train_set, test_set = train_test_split(data, test_size=.2)
 
     # params for item KNN
-    sim_options = {'name': 'pearson_baseline', 'user_based': True}
+    sim_options = {'name': args.sim_method, 'user_based': True}
     
     algo = KNNWithMeans(args.k, args.mink, sim_options=sim_options)
     algo.fit(train_set)
