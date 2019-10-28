@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-28 15:12:31
+ * @LastEditTime: 2019-10-28 15:15:19
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -41,7 +41,6 @@ python SliMRecommender.py
 python BPRMFRecommender.py --factor_num=16
 python NCFRecommnder.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
 python NFMRecommender.py --batch_size=128 --lr=0.05 --model=FM
-
 ```
 
 Help message will give you more detail description for arguments, For example:
