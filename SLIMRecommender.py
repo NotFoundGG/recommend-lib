@@ -1,3 +1,12 @@
+'''
+@Author: Yu Di
+@Date: 2019-10-27 19:13:22
+@LastEditors: Yudi
+@LastEditTime: 2019-10-28 11:07:54
+@Company: Cardinal Operation
+@Email: yudi@shanshu.ai
+@Description: 
+'''
 import os
 import time
 import pickle
@@ -52,14 +61,14 @@ class SLIM(object):
         print('covariance updates pre-calculating')
         covariance_array = None
         with ProcessPoolExecutor() as executor:
-            covariance_array = np.vstack(executor.map(compute_covariance, [self.A] * n, starts, ends))
+            covariance_array = np.vstack(executor.map(slim.compute_covariance, [self.A] * n, starts, ends))
 
-        symmetrize_covariance(covariance_array)
+        slim.symmetrize_covariance(covariance_array)
 
         print('coordinate descent for learning W matrix......')
         if self.lambda_is_ratio:
             with ProcessPoolExecutor() as executor:
-                return np.hstack(executor.map(coordinate_descent_lambda_ratio, 
+                return np.hstack(executor.map(slim.coordinate_descent_lambda_ratio, 
                                               [self.alpha] * n, 
                                               [self.lam_bda] * n, 
                                               [self.max_iter] * n, 
@@ -70,7 +79,7 @@ class SLIM(object):
                                               starts, ends))
         else:
             with ProcessPoolExecutor() as executor:
-                return np.hstack(executor.map(coordinate_descent, 
+                return np.hstack(executor.map(slim.coordinate_descent, 
                                               [self.alpha] * n, 
                                               [self.lam_bda] * n, 
                                               [self.max_iter] * n, 

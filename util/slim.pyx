@@ -76,7 +76,6 @@ def coordinate_descent(double alpha, double lam_bda, int max_iter, double tol, d
                     mode = 0
             elif mode == 0:
                 mode = 1
-        print('column {} learnt {} steps'.format(col+start, step+1))
     return W
 
 
@@ -123,5 +122,5 @@ def coordinate_descent_lambda_ratio(double alpha, double ratio, int max_iter, do
                     mode = 0
             elif mode == 0:
                 mode = 1
-        print('column {} learnt {} steps'.format(col+start, step+1))
+
     return W
