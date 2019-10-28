@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-16 16:30:51
+@LastEditTime: 2019-10-28 13:22:18
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -67,13 +67,7 @@ class SlimData(object):
     
     def __split_data(self):
         '''without time stemp'''
-        test = []
-        train = []
-        for u, i in self.data:
-            if random.randint(1, 4) == 1:
-                test.append([u, i])
-            else:
-                train.append([u, i])
+        train, test = train_test_split(self.data, test_size=.2)
         return train, test
 ########################################################################################################
 
