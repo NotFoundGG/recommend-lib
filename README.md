@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-16 18:15:29
+ * @LastEditTime: 2019-10-28 14:26:00
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -46,7 +46,7 @@ python NFMRecommender.py --help
 ## Implementation detail
 
 - you need to add corresponding dataset file into **data** folder
-- make sure you have a **CUDA** enviroment to accelarate since these deep-learning models are based on it.
+- make sure you have a **CUDA** enviroment to accelarate since these deep-learning models could be based on it.
 
 ## Simple Result Achieved for quick look
 
@@ -55,7 +55,7 @@ python NFMRecommender.py --help
 | Pop | 0.101  | 0.338 | 0.040 |
 | UserKNN | 0.141  | 0.341 | 0.069 |
 | ItemKNN | 0.153  | 0.351 | 0.079 |
-| SLiM | - | - | - |
+| SLiM | 0.3592 | 0.7064 | 0.2616 |
 | NMF | - | - | - |
 | PureSVD | - | - | - |
 | SVD | - | - | - |
