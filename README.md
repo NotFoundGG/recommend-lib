@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-28 14:26:00
+ * @LastEditTime: 2019-10-28 14:30:48
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -14,6 +14,8 @@
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
 
 2. Item-Ranking recommendation algorithms reimplementation with pytorch-gpu, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit.
+
+3. Before running `SliMRecommender.py`, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for further import.
 
 ## The requirements are as follows:
 
@@ -35,6 +37,7 @@ python UserKNNRecommnder.py
 python BPRMFRecommender.py --factor_num=16
 python NCFRecommnder.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
 python NFMRecommender.py --batch_size=128 --lr=0.05 --model=FM
+python SliMRecommender.py
 ```
 
 Help message will give you more detail description for arguments, For example:
