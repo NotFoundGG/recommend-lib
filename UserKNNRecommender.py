@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-10-16 16:26:13
+@LastEditTime: 2019-10-28 14:39:48
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
@@ -34,6 +34,10 @@ if __name__ == '__main__':
                         type=int, 
                         default=1, 
                         help='The minimum number of neighbors to take into account for aggregation')
+    parser.add_argument('--sim_method', 
+                        type=str, 
+                        default='pearson', 
+                        help='method to calculate similarity, options for cosine, msd, pearson')
     args = parser.parse_args()
 
     k = args.N
