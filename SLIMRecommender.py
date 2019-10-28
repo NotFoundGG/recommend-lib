@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 14:24:10
+@LastEditTime: 2019-10-28 14:34:33
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
@@ -92,12 +92,12 @@ class SLIM(object):
                                               starts, ends))
     
     def __recommend(self, user_AW, user_item_set):
-        """
-        给用户user推荐最多N个物品。
-        :param user_AW: A W矩阵相乘后的第user行
-        :param user_item_set: 训练集用户user所有有过正反馈的物品集合
-        :return: 推荐给本行用户的物品列表
-        """
+        '''
+        generate N recommend items for user
+        :param user_AW: the user row of the result of matrix dot product of A and W
+        :param user_item_set: item interacted in train set for user 
+        :return: recommend list for user
+        '''
         rank = dict()
         for i in set(range(self.data.num_item)) - user_item_set:
             rank[i] = user_AW[i]
@@ -117,14 +117,6 @@ class SLIM(object):
         return recommendation
 
     def compute_recommendation(self, alpha=0.5, lam_bda=0.02, max_iter=1000, tol=0.0001, N=10, lambda_is_ratio=True):
-        '''
-        :param alpha: lasso占比（为0只有ridge-regression，为1只有lasso）
-        :param lam_bda: elastic net系数
-        :param max_iter: 学习最大迭代次数
-        :param tol: 学习阈值
-        :param N: 每个用户最多推荐物品数量
-        :param lambda_is_ratio: lambda参数是否代表比例值。若为True，则运算时每列lambda单独计算；若为False，则运算时使用单一lambda的值
-        '''
         self.alpha = alpha
         self.lam_bda = lam_bda
         self.max_iter = max_iter
