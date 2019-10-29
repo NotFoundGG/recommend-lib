@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 13:22:18
+@LastEditTime: 2019-10-29 16:53:59
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -14,17 +14,60 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+from sklearn.model_selection import train_test_split
+
 import torch
 import torch.utils.data as data
-from scipy.sparse import csr_matrix, coo_matrix
-from scipy.io import mmread
-
-from sklearn.model_selection import train_test_split
 
 ML100K_NUMERIC_COLS = ['age']
 IGNORE_COLS = ['user', 'item']
 TARGET_COLS = ['rating']
 
+
+# WRMF data##########
+class WRMFData(object):
+    def __init__(self, src='ml-100k'):
+        if src == 'ml-100k':
+            df = load_rate(src)
+
+        users = list(df.user.unique())
+        items = list(df.item.unique())
+        ratings = list(df.rating)
+
+        rows = pd.Categorical(df.user).codes
+        cols = pd.Categorical(df.item).codes
+        df['user'] = rows
+        df['item'] = cols
+
+        self.mat = sp.csr_matrix((ratings, (rows, cols)), shape=(len(users), len(items)))
+        self.user_num = len(users)
+        self.item_num = len(items)
+
+        self.train, self.test, self.test_users = self._split_fo()
+
+    def _split_loo(self):
+        '''train test split by leave one out'''
+        pass
+
+    def _split_fo(self, test_size=.2):
+        '''train test split by fold out like 80-20'''
+        test_set = self.mat.copy()
+        test_set[test_set != 0 ] = 1
+        train_set = self.mat.copy()
+        nonzero_index = train_set.nonzero()
+        nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
+        random.seed(2019)
+        num_samples = int(np.ceil(test_size * len(nonzero_pairs)))
+        samples = random.sample(nonzero_pairs, num_samples)
+        user_index = [index[0] for index in samples]
+        item_index = [index[1] for index in samples]
+
+        train_set[user_index, item_index] = 0
+        train_set.eliminate_zeros()
+
+        return train_set, test_set, list(set(user_index))
+
+#####################
 # SLIM data loader 
 class SlimData(object):
     def __init__(self, src='ml-100k'):
@@ -76,6 +119,8 @@ def load_rate(src='ml-100k'):
         df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
                         names=['user', 'item', 'rating', 'timestamp'], engine='python')
 
+
+    df.sort_values(['user', 'item', 'rating', 'timestamp'], inplace=True)
     return df
 
 # NeuFM prepare
