@@ -13,9 +13,9 @@
 1. you can also download experiment data from links below: 
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
 
-2. Item-Ranking recommendation algorithms reimplementation with pytorch-gpu, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit.
+2. Item-Ranking recommendation algorithms reimplementation with pytorch, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit.
 
-3. Before running `SliMRecommender.py`, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for further import.
+3. Before running `SliMRecommender.py`, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `maxOS` and `.pyd` file for `WindowsOS` used for further import.
 
 ## The requirements are as follows:
 
