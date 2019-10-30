@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-10-30 13:28:38
+ * @LastEditTime: 2019-10-30 14:50:41
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -34,10 +34,12 @@ Default set top-K number to 10
 python MostPopRecommender.py
 python ItemKNNRecommender.py
 python UserKNNRecommnder.py
+python SliMRecommender.py
 python NMFRecommender.py
+python PureSVDRecommender.py
 python SVDRecommender.py
 python SVDppRecommender.py
-python SliMRecommender.py
+python WRMFRecommender.py
 python BPRMFRecommender.py --factor_num=16
 python NCFRecommnder.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
 python NFMRecommender.py --batch_size=128 --lr=0.05 --model=FM
@@ -63,11 +65,11 @@ python NFMRecommender.py --help
 | ItemKNN | 0.153  | 0.351 | 0.079 |
 | SLiM | 0.359 | 0.706 | 0.262 |
 | NMF | 0.157 | 0.353 | 0.078 |
-| PureSVD | - | - | - |
+| PureSVD | 0.347 | 0.638 | 0.248 |
 | SVD | 0.164 | 0.365 | 0.087 |
 | SVD++ | 0.152 | 0.360 | 0.077 |
-| WRMF | 0.5859 | 0.8326 | 0.4508 |
+| WRMF | 0.586 | 0.833 | 0.451 |
 | BPR-MF | 0.705 | 0.407 | 0.315 |
 | NeuMF | 0.698  | 0.401 | 0.310 |
 | FM | 0.209 | 0.451 | 0.119 |
-| NeuFM(deprecated) | 0.214  | 0.453 | 0.119 |
+<!-- | NeuFM(deprecated) | 0.214  | 0.453 | 0.119 | -->
