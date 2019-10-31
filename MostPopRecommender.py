@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-09-30 11:13:52
+@LastEditTime: 2019-10-31 15:04:47
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -15,7 +15,7 @@ from collections import defaultdict
 from sklearn.model_selection import train_test_split
 
 from util.data_loader import load_rate
-from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k
+from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 
 class MostPopRecommender(object):
     def __init__(self, N=5):
@@ -46,16 +46,47 @@ class MostPopRecommender(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--N', 
+    parser.add_argument('--topk', 
                         type=int, 
                         default=10, 
                         help='top number of recommend list')
+    parser.add_argument('--data_split', 
+                        type=str, 
+                        default='fo', 
+                        help='method for split test,options: loo/fo')
+    parser.add_argument('--by_time', 
+                        type=int, 
+                        default=0, 
+                        help='whether split data by time stamp')
+    parser.add_argument('--dataset', 
+                        type=str, 
+                        default='ml-100k', 
+                        help='select dataset')
     args = parser.parse_args()
-    #TODO top-N setting
-    k = args.N
 
-    df = load_rate('ml-100k')
-    train_set, test_set = train_test_split(df, test_size=0.2, random_state=2019)
+    k = args.topk
+    src = args.dataset
+    df = load_rate(src)
+    # split dataset
+    if args.data_split == 'fo':
+        if args.by_time:
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            split_idx = int(np.ceil(len(df) * 0.8))
+            train_set, test_set = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
+        else:
+            train_set, test_set = train_test_split(df, test_size=0.2, random_state=2019)
+    elif args.data_split == 'loo':
+        if args.by_time:
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            train_set, test_set = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
+            del train_set['rank_latest'], test_set['rank_latest']
+        else:
+            test_set = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+            test_key = test_set[['user', 'item']].copy()
+            train_set = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+    else:
+        raise ValueError('Invalid data_split value, expect: loo, fo')
 
     reco = MostPopRecommender(k)
     reco.fit(train_set)
@@ -69,6 +100,12 @@ if __name__ == '__main__':
         preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
 
     # calculate metrics
+    precision_k = np.mean([precision_at_k(r, k) for r in preds.values()])
+    print(f'Precision@{k}: {precision_k}')
+
+    recall_k = np.mean([recall_at_k(r, len(ur[u]), k) for u, r in preds.items()])
+    print(f'Recall@{k}: {recall_k}')
+
     map_k = mean_average_precision(list(preds.values()))
     print(f'MAP@{k}: {map_k}')
 
@@ -77,3 +114,6 @@ if __name__ == '__main__':
 
     hr_k = hr_at_k(list(preds.values()))
     print(f'HR@{k}: {hr_k}')
+
+    mrr_k = mrr_at_k(list(preds.values()))
+    print(f'MRR@{k}: {mrr_k}')
