@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-10-15 15:49:14
+@LastEditTime: 2019-10-31 15:05:46
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -101,7 +101,24 @@ def precision_at_k(r, k):
     r = np.asarray(r)[:k] != 0
     if r.size != k:
         raise ValueError('Relevance score length < k')
-    return np.mean(r)
+    # return np.mean(r)
+    return sum(r) / len(r)
+
+def recall_at_k(r, groud_truth_len, k):
+    assert k >= 1
+    r = np.asarray(r)[:k] != 0
+    if r.size != k:
+        raise ValueError('Relevance score length < k')
+    
+    return sum(r) / groud_truth_len
+
+def mrr_at_k(rs):
+    res = 0
+    for r in rs:
+        for index, item in enumerate(r):
+            if item == 1:
+                res += 1 / (index + 1)
+    return res / len(rs)
 
 def average_precision(r):
     '''
