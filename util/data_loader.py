@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-10-31 15:06:41
+@LastEditTime: 2019-11-01 13:59:36
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -70,7 +70,39 @@ class SlimData(object):
         train, test = train_test_split(self.data, test_size=.2)
         return train, test
 ########################################################################################################
+class WRMFData(object):
+    def __init__(self, src='ml-100k'):
+        df = load_rate(src)
+        users = list(np.sort(df.user.unique()))
+        items = list(df.item.unique())
+        ratings = list(df.rating)
 
+        rows = pd.Categorical(df.user).codes
+        cols = pd.Categorical(df.item).codes
+        self.mat = sp.csr_matrix((ratings, (rows, cols)), shape=(len(users), len(items)))
+        self.train, self.test, self.test_users = self._split_data()
+
+    def _split_data(self, pct_test=0.2):
+        test_set = self.mat.copy()
+        test_set[test_set != 0] = 1
+        training_set = self.mat.copy()
+        nonzero_index = training_set.nonzero()
+        nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
+        random.seed(0)
+        # Round the number of samples needed to the nearest integer
+        num_samples = int(np.ceil(pct_test * len(nonzero_pairs)))
+        # remove num_samples values from nonzero_pairs
+        samples = random.sample(nonzero_pairs, num_samples)
+        user_index = [index[0] for index in samples]
+        item_index = [index[1] for index in samples]
+        training_set[user_index, item_index] = 0
+        # eliminate stored-zero then save space
+        training_set.eliminate_zeros()
+        # Output the unique list of user rows that were altered; set() for eliminate repeated user_index
+        return training_set, test_set, list(set(user_index))
+        
+
+########################################################################################################
 def load_rate(src='ml-100k'):
     if src == 'ml-100k':
         df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
