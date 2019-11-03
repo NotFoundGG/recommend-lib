@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-10-31 15:04:47
+@LastEditTime: 2019-11-01 15:12:47
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -70,6 +70,7 @@ if __name__ == '__main__':
     # split dataset
     if args.data_split == 'fo':
         if args.by_time:
+            df = df.sample(frac=1)
             df = df.sort_values(['timestamp']).reset_index(drop=True)
             split_idx = int(np.ceil(len(df) * 0.8))
             train_set, test_set = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
@@ -77,6 +78,7 @@ if __name__ == '__main__':
             train_set, test_set = train_test_split(df, test_size=0.2, random_state=2019)
     elif args.data_split == 'loo':
         if args.by_time:
+            df = df.sample(frac=1)
             df = df.sort_values(['timestamp']).reset_index(drop=True)
             df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
             train_set, test_set = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()

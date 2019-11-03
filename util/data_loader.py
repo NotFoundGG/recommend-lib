@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-01 13:59:36
+@LastEditTime: 2019-11-03 15:38:30
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -27,80 +27,139 @@ TARGET_COLS = ['rating']
 
 # SLIM data loader 
 class SlimData(object):
-    def __init__(self, src='ml-100k'):
-        path = None
-        seperator = None
-        if src == 'ml-100k':
-            path = f'./data/{src}/u.data'
-            seperator = '\t'
-        elif src == 'ml-1m':
-            pass
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0):
+        # path = None
+        # seperator = None
+        # if src == 'ml-100k':
+        #     path = f'./data/{src}/u.data'
+        #     seperator = '\t'
+        # elif src == 'ml-1m':
+        #     pass
 
         print('Start read raw data')
-        self.data = []
-        for line in open(path, 'r'):
-            data_line = line.split(seperator)
-            userID = int(data_line[0])
-            movieID = int(data_line[1])
-            self.data.append([userID, movieID])
+        # self.data = []
+        # for line in open(path, 'r'):
+        #     data_line = line.split(seperator)
+        #     userID = int(data_line[0])
+        #     movieID = int(data_line[1])
+        #     self.data.append([userID, movieID])
         
-        def compress(data, col):
-            e_rows = dict()
-            for i in range(len(data)):
-                e = data[i][col]
-                if e not in e_rows:
-                    e_rows[e] = []
-                e_rows[e].append(i)
+        # def compress(data, col):
+        #     e_rows = dict()
+        #     for i in range(len(data)):
+        #         e = data[i][col]
+        #         if e not in e_rows:
+        #             e_rows[e] = []
+        #         e_rows[e].append(i)
 
-            for rows, i in zip(e_rows.values(), range(len(e_rows))):
-                for row in rows:
-                    data[row][col] = i
+        #     for rows, i in zip(e_rows.values(), range(len(e_rows))):
+        #         for row in rows:
+        #             data[row][col] = i
 
-            return len(e_rows)
+        #     return len(e_rows)
+        # self.num_user = compress(self.data, 0)
+        # self.num_item = compress(self.data, 1)
+        self.df = load_rate(src)
+        self.df['user'] = pd.Categorical(self.df['user']).codes
+        self.df['item'] = pd.Categorical(self.df['item']).codes
+        self.num_user = self.df.user.nunique()
+        self.num_item = self.df.item.nunique()
+        train_df, test_df = self.__split_data(data_split, by_time)
+        
+        self.train, self.test = [], []
+        for _, row in train_df.iterrows():
+            self.train.append([row['user'], row['item']])
+        for _, row in test_df.iterrows():
+            self.test.append([row['user'], row['item']])
+        print(f'{len(self.df)} data records, train set: {len(self.train)}, test set: {len(self.test)}, user num: {self.num_user}, item num: {self.num_item}')
+        del self.df
 
-        self.num_user = compress(self.data, 0)
-        self.num_item = compress(self.data, 1)
-
-        self.train, self.test = self.__split_data()
-        print(f'{len(self.data)} data records, train set: {len(self.train)}, \
-                 test set: {len(self.test)}, user num: {self.num_user}, item num: {self.num_item}')
-    
-    def __split_data(self):
+    def __split_data(self, data_split, by_time):
         '''without time stemp'''
-        train, test = train_test_split(self.data, test_size=.2)
-        return train, test
+        if data_split == 'fo':
+            if by_time:
+                self.df = self.df.sample(frac=1)
+                self.df = self.df.sort_values(['timestamp']).reset_index(drop=True)
+                split_idx = int(np.ceil(len(self.df) * 0.8))
+                train, test = self.df.iloc[:split_idx, :].copy(), self.df.iloc[split_idx:, :].copy()
+                return train, test
+            else:
+                train, test = train_test_split(self.df, test_size=.2)
+                return train, test
+        elif data_split == 'loo':
+            if by_time:
+                self.df = self.df.sample(frac=1)
+                self.df = self.df.sort_values(['timestamp']).reset_index(drop=True)
+                self.df['rank_latest'] = self.df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+                train, test = self.df[self.df['rank_latest'] > 1].copy(), self.df[self.df['rank_latest'] == 1].copy()
+                del train['rank_latest'], test['rank_latest']
+                return train, test
+            else:
+                test = self.df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+                test_key = test[['user', 'item']].copy()
+                train = self.df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+                return train, test
+        else:
+            raise ValueError('Invalid data_split value, expect: loo, fo')
+            
 ########################################################################################################
 class WRMFData(object):
-    def __init__(self, src='ml-100k'):
-        df = load_rate(src)
-        users = list(np.sort(df.user.unique()))
-        items = list(df.item.unique())
-        ratings = list(df.rating)
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0):
+        self.df = load_rate(src)
+        self.data_split = data_split
+        self.by_time = by_time
 
-        rows = pd.Categorical(df.user).codes
-        cols = pd.Categorical(df.item).codes
-        self.mat = sp.csr_matrix((ratings, (rows, cols)), shape=(len(users), len(items)))
+        ratings = list(self.df.rating)
+        rows = pd.Categorical(self.df.user).codes
+        cols = pd.Categorical(self.df.item).codes
+        self.df['user'] = rows
+        self.df['item'] = cols
+        self.user_num, self.item_num = self.df.user.nunique(), self.df.item.nunique()
+        
+        self.mat = sp.csr_matrix((ratings, (rows, cols)), shape=(self.user_num, self.item_num))
         self.train, self.test, self.test_users = self._split_data()
 
     def _split_data(self, pct_test=0.2):
         test_set = self.mat.copy()
         test_set[test_set != 0] = 1
         training_set = self.mat.copy()
-        nonzero_index = training_set.nonzero()
-        nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
-        random.seed(0)
-        # Round the number of samples needed to the nearest integer
-        num_samples = int(np.ceil(pct_test * len(nonzero_pairs)))
-        # remove num_samples values from nonzero_pairs
-        samples = random.sample(nonzero_pairs, num_samples)
-        user_index = [index[0] for index in samples]
-        item_index = [index[1] for index in samples]
+        if self.data_split == 'fo':
+            if self.by_time:
+                self.df = self.df.sample(frac=1)
+                self.df = self.df.sort_values(['timestamp']).reset_index(drop=True)
+                split_idx = int(np.ceil(len(self.df) * 0.8))
+                samples = self.df.iloc[split_idx:, :].copy()
+                user_index = [u for u in samples.user]
+                item_index = [i for i in samples.item]
+            else:
+                nonzero_index = training_set.nonzero()
+                nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
+                random.seed(0)
+                # Round the number of samples needed to the nearest integer
+                num_samples = int(np.ceil(pct_test * len(nonzero_pairs)))
+                # remove num_samples values from nonzero_pairs
+                samples = random.sample(nonzero_pairs, num_samples)
+                user_index = [index[0] for index in samples]
+                item_index = [index[1] for index in samples]
+        elif self.data_split == 'loo':
+            if self.by_time:
+                self.df = self.df.sample(frac=1)
+                self.df = self.df.sort_values(['timestamp']).reset_index(drop=True)
+                self.df['rank_latest'] = self.df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+                samples = self.df[self.df['rank_latest'] == 1].copy()
+                user_index = [u for u in samples.user]
+                item_index = [i for i in samples.item]
+            else:
+                samples = self.df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+                user_index = [u for u in samples.user]
+                item_index = [i for i in samples.item]
+        else:
+            raise ValueError('Invalid data_split value, expect: loo, fo')
         training_set[user_index, item_index] = 0
         # eliminate stored-zero then save space
         training_set.eliminate_zeros()
         # Output the unique list of user rows that were altered; set() for eliminate repeated user_index
         return training_set, test_set, list(set(user_index))
-        
 
 ########################################################################################################
 def load_rate(src='ml-100k'):

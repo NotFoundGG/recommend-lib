@@ -2,28 +2,25 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 14:34:33
+@LastEditTime: 2019-11-03 16:24:51
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
 '''
 import os
 import time
-import pickle
-import numbers
+import random
 import argparse
 import operator
 
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from scipy.sparse import csr_matrix, coo_matrix
-from sklearn.linear_model import SGDRegressor, ElasticNet
 from concurrent.futures import ProcessPoolExecutor
 
 from util import slim
 from util.data_loader import SlimData
-from util.metrics import mean_average_precision, ndcg_at_k, hr_at_k
+from util.metrics import mean_average_precision, ndcg_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 
 class SLIM(object):
     def __init__(self, data):
@@ -91,15 +88,25 @@ class SLIM(object):
                                               [covariance_array] * n, 
                                               starts, ends))
     
-    def __recommend(self, user_AW, user_item_set):
+    def __recommend(self, u, user_AW, user_item_set):
         '''
         generate N recommend items for user
         :param user_AW: the user row of the result of matrix dot product of A and W
         :param user_item_set: item interacted in train set for user 
         :return: recommend list for user
         '''
+        truth = self.ur[u]
+        max_i_num = 100
+        if len(truth) < 100:
+            cands_num = max_i_num - len(truth)
+            sub_item_pool = set(range(self.data.num_item)) - user_item_set - set(truth)
+            cands = random.sample(sub_item_pool, cands_num)
+            candidates = list(set(truth) | set(cands))
+        else:
+            candidates = random.sample(truth, max_i_num)
+
         rank = dict()
-        for i in set(range(self.data.num_item)) - user_item_set:
+        for i in set(candidates):
             rank[i] = user_AW[i]
         return [items[0] for items in sorted(rank.items(), key=operator.itemgetter(1), reverse=True)[:self.N]]
 
@@ -108,21 +115,22 @@ class SLIM(object):
         for user, item in self.data.train:
             train_user_items[user].add(item)
 
-        AW = self.A.dot(self.W)
-
+        AW = self.A.dot(self.W) # get user prediction for all item
         # recommend N items for each user
         recommendation = []
-        for user_AW, user_item_set in zip(AW, train_user_items):
-            recommendation.append(self.__recommend(user_AW, user_item_set))
+        for u, user_AW, user_item_set in zip(range(self.data.num_user), AW, train_user_items):
+            recommendation.append(self.__recommend(u, user_AW, user_item_set))
         return recommendation
 
-    def compute_recommendation(self, alpha=0.5, lam_bda=0.02, max_iter=1000, tol=0.0001, N=10, lambda_is_ratio=True):
+    def compute_recommendation(self, alpha=0.5, lam_bda=0.02, max_iter=1000, tol=0.0001, N=10, 
+                               ground_truth=None, lambda_is_ratio=True):
         self.alpha = alpha
         self.lam_bda = lam_bda
         self.max_iter = max_iter
         self.tol = tol
         self.N = N
         self.lambda_is_ratio = lambda_is_ratio
+        self.ur = ground_truth
 
         print(f'Start calculating W matrix(alpha={self.alpha}, lambda={self.lam_bda}, max_iter={self.max_iter}, tol={self.tol})')
         self.W = self.__aggregation_coefficients()
@@ -152,30 +160,50 @@ if __name__ == '__main__':
                         type=float, 
                         default=0.0001, 
                         help='learning threshold')
+    parser.add_argument('--data_split', 
+                        type=str, 
+                        default='fo', 
+                        help='method for split test,options: loo/fo')
+    parser.add_argument('--by_time', 
+                        type=int, 
+                        default=0, 
+                        help='whether split data by time stamp')
+    parser.add_argument('--dataset', 
+                        type=str, 
+                        default='ml-100k', 
+                        help='select dataset')
     args = parser.parse_args()
 
-    src = 'ml-100k'
-    slim_data= SlimData(src)
-
-    start_time = time.time()
-    recommend = SLIM(slim_data)
-    recommend.compute_recommendation(alpha=args.alpha, lam_bda=args.elastic, 
-                                     max_iter=args.epochs, tol=args.tol, N=args.topk)
-    print('Finish train model and generate topN list')
+    src = args.dataset
+    slim_data= SlimData(src, args.data_split, args.by_time)
 
     # genereate top-N list for test user set
     test_user_set = list({ele[0] for ele in slim_data.test})
+    # this ur is test set ground truth
     ur = defaultdict(list)
     for ele in slim_data.test:
         ur[ele[0]].append(ele[1])
+
+    start_time = time.time()
+    recommend = SLIM(slim_data)
+    recommend.compute_recommendation(alpha=args.alpha, lam_bda=args.elastic, max_iter=args.epochs, 
+                                     tol=args.tol, N=args.topk, ground_truth=ur)
+    print('Finish train model and generate topN list')
+
     preds = {}
     for u in ur.keys():
-        preds[u] = recommend.recommendation[u]
+        preds[u] = recommend.recommendation[u] # recommendation didn't contain item in train set
     # kpi calculation
     for u in preds.keys():
         preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
 
     # calculate metrics
+    precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
+    print(f'Precision@{args.topk}: {precision_k}')
+
+    recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
+    print(f'Recall@{args.topk}: {recall_k}')
+
     map_k = mean_average_precision(list(preds.values()))
     print(f'MAP@{args.topk}: {map_k}')
 
@@ -184,3 +212,6 @@ if __name__ == '__main__':
 
     hr_k = hr_at_k(list(preds.values()))
     print(f'HR@{args.topk}: {hr_k}')
+
+    mrr_k = mrr_at_k(list(preds.values()))
+    print(f'MRR@{args.topk}: {mrr_k}')
