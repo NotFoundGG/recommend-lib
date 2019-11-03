@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-03 15:38:30
+@LastEditTime: 2019-11-03 20:54:00
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -171,7 +171,7 @@ def load_rate(src='ml-100k'):
     return df
 
 # NeuFM/FM prepare
-def load_libfm(src='ml-100k'):
+def load_libfm(src='ml-100k', data_split='fo', by_time=0):
     df = load_rate(src)
 
     if src == 'ml-100k':
@@ -186,7 +186,7 @@ def load_libfm(src='ml-100k'):
 
         df = df.merge(user_info, on='user', how='left').merge(item_info, on='item', how='left')
         df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
-                 'zip_code', 'timestamp', 'release_date'], axis=1, inplace=True)
+                    'zip_code', 'release_date'], axis=1, inplace=True)
 
         # rating >=4 interaction =1
         df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
@@ -207,13 +207,44 @@ def load_libfm(src='ml-100k'):
     feat_idx_dict = {} # 存储各个category特征的起始索引位置
     idx = 0
     for col in df.columns:
-        if col != 'rating':
+        if col not in ['rating', 'timestamp']:
             feat_idx_dict[col] = idx
             idx = idx + df[col].max() + 1
+    print('Finish build category index dictionary......')
 
-    train, test = train_test_split(df, test_size=0.1)
-    train, valid = train_test_split(train, test_size=0.1)
-
+    if data_split == 'fo':
+        if by_time:
+            df = df.sample(frac=1)
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            del df['timestamp']
+            
+            split_idx = int(np.ceil(len(df) * 0.8)) # for train test
+            train, test = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
+            split_idx = int(np.ceil(len(train) * 0.9)) # for train valid
+            train, valid = train.iloc[:split_idx, :].copy(), train.iloc[split_idx:, :].copy()
+        else:
+            del df['timestamp']
+            train, test = train_test_split(df, test_size=0.2)
+            train, valid = train_test_split(train, test_size=0.1)
+    elif data_split == 'loo':
+        if by_time:
+            df = df.sample(frac=1)
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            train, test = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
+            train.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
+            test.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
+            split_idx = int(np.ceil(len(train) * 0.9)) # for train valid
+            train = train.reset_index(drop=True)
+            train, valid = train.iloc[:split_idx, :].copy(), train.iloc[split_idx:, :].copy()
+        else:
+            del df['timestamp']
+            test = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+            test_key = test[['user', 'item']].copy()
+            train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+            train, valid = train_test_split(train, test_size=0.1)
+    else:
+        raise ValueError('Invalid data_split value, expect: loo, fo')
     test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
     ui = test[['user', 'item']].copy()
     u_is = defaultdict(list)

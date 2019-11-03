@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-16 17:27:52
+@LastEditTime: 2019-11-03 21:31:39
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -23,7 +23,7 @@ import torch.utils.data as data
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
-from util.metrics import metrics_nfm, mean_average_precision, ndcg_at_k, hr_at_k
+from util.metrics import metrics_nfm, mean_average_precision, ndcg_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 from util.data_loader import load_libfm, map_features, FMData
 
 class NFM(nn.Module):
@@ -186,7 +186,7 @@ if __name__ == '__main__':
                         help='batch size for training')
     parser.add_argument('--epochs', 
                         type=int, 
-                        default=100, 
+                        default=20, 
                         help='training epochs')
     parser.add_argument('--hidden_factor', 
                         type=int, 
@@ -233,7 +233,18 @@ if __name__ == '__main__':
                         type=str, 
                         default=10, 
                         help='Top K number')
-
+    parser.add_argument('--dataset', 
+                        type=str, 
+                        default='ml-100k', 
+                        help='select dataset')
+    parser.add_argument('--data_split', 
+                        type=str, 
+                        default='fo', 
+                        help='method for split test,options: loo/fo')
+    parser.add_argument('--by_time', 
+                        type=int, 
+                        default=0, 
+                        help='whether split data by time stamp')
     args = parser.parse_args()
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -351,19 +362,20 @@ if __name__ == '__main__':
     for key, val in ground_truth.items():
         test_u_is[key] = set(val)
 
-    max_i_num = max([len(v) for v in test_u_is.values()])
-    max_i_num = 50 if max_i_num <= 50 else max_i_num
+    max_i_num = 100
 
     preds = {}
     tmp_file_name = f'./tmp.test.libfm'
     for u in test_user_set:
+        if len(test_u_is[u]) < max_i_num:
         # construct candidates set
-        actual_i_list = ground_truth[u]
-        cands_num = max_i_num - len(actual_i_list)
-        cands = random.sample(test_item_set, cands_num)
-        test_u_is[u] = test_u_is[u] | set(cands)
+            actual_i_list = ground_truth[u]
+            cands_num = max_i_num - len(actual_i_list)
+            cands = random.sample(test_item_set, cands_num)
+            test_u_is[u] = test_u_is[u] | set(cands)
+        else:
+            test_u_is[u] = set(random.sample(test_u_is[u], max_i_num))
         candidates = list(test_u_is[u])
-
         df = pd.DataFrame({'user': [u for _ in test_u_is[u]], 'item': list(test_u_is[u])})
         df = df.merge(user_tag_info, on='user', how='left').merge(item_tag_info, on='item', how='left')
 
@@ -400,6 +412,12 @@ if __name__ == '__main__':
     
     
     # calculate metrics
+    precision_k = np.mean([precision_at_k(r, top_k) for r in preds.values()])
+    print(f'Precision@{top_k}: {precision_k}')
+
+    recall_k = np.mean([recall_at_k(r, len(ground_truth[u]), top_k) for u, r in preds.items()])
+    print(f'Recall@{top_k}: {recall_k}')
+
     map_k = mean_average_precision(list(preds.values()))
     print(f'MAP@{top_k}: {map_k}')
 
@@ -408,6 +426,8 @@ if __name__ == '__main__':
 
     hr_k = hr_at_k(list(preds.values()))
     print(f'HR@{top_k}: {hr_k}')
+
+
 
     if os.path.exists(tmp_file_name):
         os.remove(tmp_file_name)
