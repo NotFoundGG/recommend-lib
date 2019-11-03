@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-03 20:54:00
+@LastEditTime: 2019-11-03 22:59:47
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -28,37 +28,7 @@ TARGET_COLS = ['rating']
 # SLIM data loader 
 class SlimData(object):
     def __init__(self, src='ml-100k', data_split='fo', by_time=0):
-        # path = None
-        # seperator = None
-        # if src == 'ml-100k':
-        #     path = f'./data/{src}/u.data'
-        #     seperator = '\t'
-        # elif src == 'ml-1m':
-        #     pass
-
-        print('Start read raw data')
-        # self.data = []
-        # for line in open(path, 'r'):
-        #     data_line = line.split(seperator)
-        #     userID = int(data_line[0])
-        #     movieID = int(data_line[1])
-        #     self.data.append([userID, movieID])
-        
-        # def compress(data, col):
-        #     e_rows = dict()
-        #     for i in range(len(data)):
-        #         e = data[i][col]
-        #         if e not in e_rows:
-        #             e_rows[e] = []
-        #         e_rows[e].append(i)
-
-        #     for rows, i in zip(e_rows.values(), range(len(e_rows))):
-        #         for row in rows:
-        #             data[row][col] = i
-
-        #     return len(e_rows)
-        # self.num_user = compress(self.data, 0)
-        # self.num_item = compress(self.data, 1)
+        print('Start read raw data')        
         self.df = load_rate(src)
         self.df['user'] = pd.Categorical(self.df['user']).codes
         self.df['item'] = pd.Categorical(self.df['item']).codes
@@ -285,7 +255,6 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0):
     file_obj.close()
 
     return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is
-        
 
 def read_features(file, features):
     ''' Read features from the given file. '''
@@ -370,10 +339,40 @@ def _negative_sampling(ratings):
     return interact_status[['user', 'negative_samples']]
     
 
-def load_mat(src='ml-100k', test_num=100):
-    train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
-                             names=['user', 'item'], usecols=[0, 1], 
-                             dtype={0: np.int32, 1: np.int32}, engine='python')
+def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=0):
+    df = load_rate(src)
+    df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
+    df['user'] = pd.Categorical(df.user).codes
+    df['item'] = pd.Categorical(df.item).codes
+    negatives = _negative_sampling(df)
+    train, test = _split_loo(df)
+    file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
+    for _, row in train.iterrows():
+        ln = '\t'.join(map(str, row.values)) + '\n'
+        file_obj.write(ln)
+    file_obj.close()
+
+    file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
+    for _, row in test.iterrows():
+        ln = '\t'.join(map(str, row.values)) + '\n'
+        file_obj.write(ln)
+    file_obj.close()
+
+    negs = test.merge(negatives, on=['user'], how='left')
+    negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
+    negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
+
+    file_obj = open(f'./data/{src}/{src}.test.negative', 'w')
+    for _, row in negs.iterrows():
+        ln = row['user'] + '\t' + '\t'.join(map(str, row['negative_samples'])) + '\n'
+        file_obj.write(ln)
+    file_obj.close()
+    print('Finish build train and test set......')
+
+    if src == 'ml-100k':
+        train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
+                                names=['user', 'item'], usecols=[0, 1], 
+                                dtype={0: np.int32, 1: np.int32}, engine='python')
     user_num = train_data['user'].max() + 1
     item_num = train_data['item'].max() + 1
     
@@ -477,10 +476,8 @@ if __name__ == '__main__':
     # load negative sampling dataset for NCF BPR, take ml-100k as an example
     df = load_rate('ml-100k')
     df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
-
     df['user'] = pd.Categorical(df.user).codes
     df['item'] = pd.Categorical(df.item).codes
-
     negatives = _negative_sampling(df)
     train, test = _split_loo(df)
 

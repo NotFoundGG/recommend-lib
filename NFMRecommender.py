@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-03 21:31:39
+@LastEditTime: 2019-11-03 22:12:25
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -245,6 +245,10 @@ if __name__ == '__main__':
                         type=int, 
                         default=0, 
                         help='whether split data by time stamp')
+    parser.add_argument('--dataset', 
+                        type=str, 
+                        default='ml-100k', 
+                        help='Select dataset')
     args = parser.parse_args()
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -253,7 +257,7 @@ if __name__ == '__main__':
     # device = torch.device('cpu') # turn to cpu mode
 
     ### prepare dataset ###
-    src = 'ml-100k'
+    src = args.dataset
     feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, ground_truth = load_libfm(src)
     features_map, num_features = map_features(src)
 
