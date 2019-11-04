@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-11-04 13:16:32
+@LastEditTime: 2019-11-04 17:35:27
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -11,6 +11,27 @@ import numpy as np
 import torch
 
 # pytorch KPI calculating methods
+# NFM train metric
+def metrics_nfm(model, dataloader):
+    # device = torch.device('cpu')
+    RMSE = np.array([], dtype=np.float32)
+    for features, feature_values, label in dataloader:
+        if torch.cuda.is_available():
+            features = features.cuda()
+            feature_values = feature_values.cuda()
+            label = label.cuda()
+        else:
+            features = features.cpu()
+            feature_values = feature_values.cpu()
+            label = label.cpu()
+
+        prediction = model(features, feature_values)
+        prediction = prediction.clamp(min=-1.0, max=1.0)
+        SE = (prediction - label).pow(2)
+        RMSE = np.append(RMSE, SE.detach().cpu().numpy())
+
+    return np.sqrt(RMSE.mean())
+
 def hit(gt_item, pred_items):
     if gt_item in pred_items:
         return 1
@@ -90,8 +111,10 @@ def metric_eval(model, test_loader, top_k, algo='bpr'):
         HR, NDCG, MAP = _ncf_topk(model, test_loader, top_k)
 
     return HR, NDCG, MAP
+############ these metric only work in train process ########################
 
 # some algorithm just use numpy-based, so the KPI calculating methods are different from pytorch
+# function below used for test set KPI calculation
 def precision_at_k(r, k):
     '''
     Args:
@@ -179,25 +202,4 @@ def ndcg_at_k(r, k):
     if not idcg:
         return 0.
     return dcg_at_k(r, k) / idcg
-
-# NFM train metric
-def metrics_nfm(model, dataloader):
-    # device = torch.device('cpu')
-    RMSE = np.array([], dtype=np.float32)
-    for features, feature_values, label in dataloader:
-        if torch.cuda.is_available():
-            features = features.cuda()
-            feature_values = feature_values.cuda()
-            label = label.cuda()
-        else:
-            features = features.cpu()
-            feature_values = feature_values.cpu()
-            label = label.cpu()
-
-        prediction = model(features, feature_values)
-        prediction = prediction.clamp(min=-1.0, max=1.0)
-        SE = (prediction - label).pow(2)
-        RMSE = np.append(RMSE, SE.detach().cpu().numpy())
-
-    return np.sqrt(RMSE.mean())
 
