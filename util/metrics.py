@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-10-31 15:05:46
+@LastEditTime: 2019-11-04 13:16:32
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -33,6 +33,11 @@ def ndcg(gt_item, pred_items):
         index = pred_items.index(gt_item)
         return np.reciprocal(np.log2(index+2))
     return 0
+
+# def mr(gt_item, pred_items):
+
+#     if gt_item in pred_items:
+#         index = pred_items.index(gt_item)
 
 def _bpr_topk(model, test_loader, top_k):
     HR, NDCG, MAP = [], [], []

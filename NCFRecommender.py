@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-10-15 14:42:56
+@LastEditTime: 2019-11-04 14:52:08
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -11,6 +11,8 @@ import os
 import time
 import argparse
 import numpy as np
+from tqdm import tqdm
+from collections import defaultdict
 
 import torch
 import torch.nn as nn
@@ -20,7 +22,7 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
 from util.data_loader import NCFData, load_mat
-from util.metrics import metric_eval
+from util.metrics import metric_eval, recall_at_k, precision_at_k, mean_average_precision, ndcg_at_k, hr_at_k, mrr_at_k
 
 class NCF(nn.Module):
     def __init__(self, user_num, item_num, factor_num, num_layers, dropout, 
@@ -170,13 +172,26 @@ if __name__ == '__main__':
                         type=str, 
                         default='NeuMF-end', 
                         help='target model name, if NeuMF-pre plz run MLP and GMF before')
+    parser.add_argument('--dataset', 
+                        type=str, 
+                        default='ml-100k', 
+                        help='select dataset')
+    parser.add_argument('--data_split', 
+                        type=str, 
+                        default='loo', 
+                        help='method for split test,options: loo/fo')
+    parser.add_argument('--by_time', 
+                        type=int, 
+                        default=1, 
+                        help='whether split data by time stamp')
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
 
     # load data
-    src = 'ml-100k'
-    train_data, test_data, user_num, item_num, train_mat = load_mat(src)
+    src = args.dataset
+    train_data, test_data, user_num, item_num, train_mat, ur = load_mat(src, data_split=args.data_split, by_time=args.by_time)
+    
     train_dataset = NCFData(train_data, item_num, train_mat, args.num_ng, True)
     test_dataset = NCFData(test_data, item_num, train_mat, 0, False)
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 
@@ -244,7 +259,7 @@ if __name__ == '__main__':
         elapsed_time = time.time() - start_time
         print("The time elapse of epoch {:03d}".format(epoch + 1) + ' is: ' + 
                 time.strftime('%H: %M: %S', time.gmtime(elapsed_time)))
-        print('HR: {:.3f}\tNDCG: {:.3f}\tMAP: {:.3f}'.format(np.mean(HR), np.mean(NDCG), np.mean(MAP)))
+        # print('HR: {:.3f}\tNDCG: {:.3f}\tMAP: {:.3f}'.format(np.mean(HR), np.mean(NDCG), np.mean(MAP)))
 
         if HR > best_hr:
             best_hr, best_ndcg, best_map, best_epoch = HR, NDCG, MAP, epoch
@@ -253,7 +268,41 @@ if __name__ == '__main__':
                     os.makedirs(f'./models/{src}')
                 torch.save(model, f'./models/{src}/{model_name.split("-")[0]}.pt')
 
-    print('End. Best epoch {:03d}: HR = {:.3f}, NDCG = {:.3f}, MAP = {:.3f}'.format(best_epoch, 
-                                                                                    best_hr, 
-                                                                                    best_ndcg, 
-                                                                                    best_map))
+    print('End. Best epoch {:03d}: HR = {:.3f}'.format(best_epoch, best_hr))
+
+    # Calculate KPI
+    preds = {}
+    test_u_is = defaultdict(set)
+    for ele in test_data:
+        test_u_is[int(ele[0])].add(int(ele[1]))
+
+    print('Start generate top-K rank list......')
+    for u in tqdm(test_u_is.keys()):
+        test_u_is[u] = list(test_u_is[u])
+        pred_rates = [model(torch.tensor(u), torch.tensor(i)).cpu().detach().numpy()[0] for i in test_u_is[u]]
+        rec_idx = np.argsort(pred_rates)[::-1][:args.top_k]
+        top_n = np.array(test_u_is[u])[rec_idx]
+        preds[u] = list(top_n)
+
+    for u in preds.keys():
+        preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+
+    # calculate metrics
+    precision_k = np.mean([precision_at_k(r, args.top_k) for r in preds.values()])
+    print(f'Precision@{args.top_k}: {precision_k}')
+
+    recall_k = np.mean([recall_at_k(r, len(ur[u]), args.top_k) for u, r in preds.items()])
+    print(f'Recall@{args.top_k}: {recall_k}')
+
+    map_k = mean_average_precision(list(preds.values()))
+    print(f'MAP@{args.top_k}: {map_k}')
+
+    ndcg_k = np.mean([ndcg_at_k(r, args.top_k) for r in preds.values()])
+    print(f'NDCG@{args.top_k}: {ndcg_k}')
+
+    hr_k = hr_at_k(list(preds.values()))
+    print(f'HR@{args.top_k}: {hr_k}')
+
+    mrr_k = mrr_at_k(list(preds.values()))
+    print(f'MRR@{args.top_k}: {mrr_k}')
+    

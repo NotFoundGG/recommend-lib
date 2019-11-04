@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-03 22:59:47
+@LastEditTime: 2019-11-04 14:39:43
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -319,13 +319,27 @@ class FMData(data.Dataset):
         return features, feature_values, label
 
 ###############
-
-def _split_loo(ratings):
-    ratings['rank_latest'] = ratings.groupby(['user'])['timestamp'].rank(method='first', 
-                                                                         ascending=False)
-    train = ratings[ratings['rank_latest'] > 1]
-    test = ratings[ratings['rank_latest'] == 1]
+def _split_loo(ratings, by_time=1):
+    if by_time:
+        ratings['rank_latest'] = ratings.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        train = ratings[ratings['rank_latest'] > 1].copy()
+        test = ratings[ratings['rank_latest'] == 1].copy()
+    else:
+        ratings = ratings.sample(frac=1)
+        test = ratings.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        test_key = test[['user', 'item']].copy()
+        train = ratings.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
     assert train['user'].nunique() == test['user'].nunique()
+    return train[['user', 'item', 'rating', 'timestamp']], test[['user', 'item', 'rating', 'timestamp']]
+
+def _split_fo(ratings, by_time=0):
+    if by_time:
+        ratings = ratings.sample(frac=1)
+        ratings = ratings.sort_values(['timestamp']).reset_index(drop=True)
+        split_idx = int(np.ceil(len(ratings) * 0.8))
+        train, test = ratings.iloc[:split_idx, :].copy(), ratings.iloc[split_idx:, :].copy()
+    else:
+        train, test = train_test_split(ratings, test_size=.2)
     return train[['user', 'item', 'rating', 'timestamp']], test[['user', 'item', 'rating', 'timestamp']]
 
 def _negative_sampling(ratings):
@@ -339,60 +353,100 @@ def _negative_sampling(ratings):
     return interact_status[['user', 'negative_samples']]
     
 
-def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=0):
+def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1):
     df = load_rate(src)
-    df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
+    # df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
     df['user'] = pd.Categorical(df.user).codes
     df['item'] = pd.Categorical(df.item).codes
-    negatives = _negative_sampling(df)
-    train, test = _split_loo(df)
-    file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
-    for _, row in train.iterrows():
-        ln = '\t'.join(map(str, row.values)) + '\n'
-        file_obj.write(ln)
-    file_obj.close()
 
-    file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
-    for _, row in test.iterrows():
-        ln = '\t'.join(map(str, row.values)) + '\n'
-        file_obj.write(ln)
-    file_obj.close()
+    user_num = df['user'].max() + 1
+    item_num = df['item'].max() + 1
 
-    negs = test.merge(negatives, on=['user'], how='left')
-    negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
-    negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
+    if data_split == 'loo':
+        negatives = _negative_sampling(df)
+        train, test = _split_loo(df, by_time)
 
-    file_obj = open(f'./data/{src}/{src}.test.negative', 'w')
-    for _, row in negs.iterrows():
-        ln = row['user'] + '\t' + '\t'.join(map(str, row['negative_samples'])) + '\n'
-        file_obj.write(ln)
-    file_obj.close()
-    print('Finish build train and test set......')
+        file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
+        for _, row in train.iterrows():
+            ln = '\t'.join(map(str, row.values)) + '\n'
+            file_obj.write(ln)
+        file_obj.close()
 
-    if src == 'ml-100k':
-        train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
-                                names=['user', 'item'], usecols=[0, 1], 
-                                dtype={0: np.int32, 1: np.int32}, engine='python')
-    user_num = train_data['user'].max() + 1
-    item_num = train_data['item'].max() + 1
-    
+        file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
+        for _, row in test.iterrows():
+            ln = '\t'.join(map(str, row.values)) + '\n'
+            file_obj.write(ln)
+        file_obj.close()
+
+        negs = test.merge(negatives, on=['user'], how='left')
+        negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
+        negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
+
+        file_obj = open(f'./data/{src}/{src}.test.negative', 'w')
+        for _, row in negs.iterrows():
+            ln = row['user'] + '\t' + '\t'.join(map(str, row['negative_samples'])) + '\n'
+            file_obj.write(ln)
+        file_obj.close()
+        
+        test_data = []
+        ur = defaultdict(set)
+        with open(f'./data/{src}/{src}.test.negative', 'r') as fd:
+            line = fd.readline()
+            while line is not None and line != '':
+                arr = line.split('\t')
+                u = eval(arr[0])[0]
+                test_data.append([u, eval(arr[0])[1]])
+                ur[u].add(int(eval(arr[0])[1]))
+                for i in arr[1:]:
+                    test_data.append([u, int(i)])
+                line = fd.readline()
+
+    elif data_split == 'fo':
+        negatives = _negative_sampling(df)
+        train, test = _split_fo(df, by_time)
+
+        file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
+        for _, row in train.iterrows():
+            ln = '\t'.join(map(str, row.values)) + '\n'
+            file_obj.write(ln)
+        file_obj.close()
+
+        file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
+        for _, row in test.iterrows():
+            ln = '\t'.join(map(str, row.values)) + '\n'
+            file_obj.write(ln)
+        file_obj.close()
+
+        test_data = []
+        ur = defaultdict(set) # ground_truth
+        max_i_num = 100
+        for u in test.user.unique():
+            pre_cands = negatives.query(f'user=={u}')['negative_samples'].values[0]  # 99 pre-candidates
+            test_u_is = test.query(f'user=={u}')['item'].values.tolist()
+            ur[u] = set(test_u_is)
+            if len(test_u_is) < max_i_num:
+                cands_num = max_i_num - len(test_u_is)
+                candidates = random.sample(pre_cands, cands_num)
+                test_u_is = list(set(candidates) | set(test_u_is))
+            else:
+                test_u_is = random.sample(test_u_is, max_i_num)
+            for i in test_u_is:
+                test_data.append([u, i])
+    else:
+        raise ValueError('Invalid data_split value, expect: loo, fo')
+
+    train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
+                            names=['user', 'item'], usecols=[0, 1], 
+                            dtype={0: np.int32, 1: np.int32}, engine='python')
+
     train_data = train_data.values.tolist()
     # load ratings as a dok matrix
     train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
     for x in train_data:
         train_mat[x[0], x[1]] = 1.0
+    print('Finish build train and test set......')
     
-    test_data = []
-    with open(f'./data/{src}/{src}.test.negative', 'r') as fd:
-        line = fd.readline()
-        while line is not None and line != '':
-            arr = line.split('\t')
-            u = eval(arr[0])[0]
-            test_data.append([u, eval(arr[0])[1]])
-            for i in arr[1:]:
-                test_data.append([u, int(i)])
-            line = fd.readline()
-    return train_data, test_data, user_num, item_num, train_mat
+    return train_data, test_data, user_num, item_num, train_mat, ur
 
 class NCFData(data.Dataset):
     def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):

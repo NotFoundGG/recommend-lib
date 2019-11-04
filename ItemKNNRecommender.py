@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-11-01 15:30:15
+@LastEditTime: 2019-11-04 12:12:48
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Item-KNN recommender
@@ -57,6 +57,7 @@ if __name__ == '__main__':
 
     if args.data_split == 'fo':
         if args.by_time:
+            df = df.sample(frac=1)
             df = df.sort_values(['timestamp']).reset_index(drop=True)
             df['user'] = pd.Categorical(df['user']).codes
             df['item'] = pd.Categorical(df['item']).codes
@@ -75,6 +76,7 @@ if __name__ == '__main__':
             train_set, test_set = train_test_split(data, test_size=.2)
     elif args.data_split == 'loo':
         if args.by_time:
+            df = df.sample(frac=1)
             df = df.sort_values(['timestamp']).reset_index(drop=True)
             df['user'] = pd.Categorical(df['user']).codes
             df['item'] = pd.Categorical(df['item']).codes
