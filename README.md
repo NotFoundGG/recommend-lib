@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-03 22:29:35
+ * @LastEditTime: 2019-11-04 17:36:03
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -41,7 +41,7 @@ python SVDRecommender.py
 python SVDppRecommender.py
 python WRMFRecommender.py
 python BPRMFRecommender.py --factor_num=16
-python NCFRecommender.py --batch_size=256 --factor_num=16 --model_name=NeuMF-pre
+python NCFRecommender.py --batch_size=256 --factor_num=16
 python NFMRecommender.py --batch_size=128 --lr=0.05 --model=FM
 ```
 
