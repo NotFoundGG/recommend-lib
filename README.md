@@ -13,9 +13,9 @@
 1. you can also download experiment data from links below: 
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
 
-2. Item-Ranking recommendation algorithms reimplementation with pytorch, [Surprise](https://github.com/NicolasHug/Surprise) Toolkit.
+2. Item-Ranking recommendation algorithms reimplementation with pytorch, numpy and scipy.
 
-3. Before running `SliMRecommender.py`, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `maxOS` and `.pyd` file for `WindowsOS` used for further import.
+3. Before running `SliMRecommender.py`, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `maxOS` or `.pyd` file for `WindowsOS` used for further import.
 
 ## The requirements are as follows:
 
@@ -24,20 +24,18 @@
 * numpy>=1.16.2
 * pytorch>=1.0.1
 * sklearn>=0.21.3
-* surprise==1.1.0
 
 ## Examples to run:
 
-Default set top-K number to 10
+Default set top-K number to 10, you can change top-K number by modifying `topk` argument.
 
 ```
 python MostPopRecommender.py
 python ItemKNNRecommender.py
 python UserKNNRecommnder.py
 python SliMRecommender.py
-python NMFRecommender.py
 python PureSVDRecommender.py
-python SVDRecommender.py
+python RSVDRecommender.py
 python SVDppRecommender.py
 python WRMFRecommender.py
 python BPRMFRecommender.py --factor_num=16
