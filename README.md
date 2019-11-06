@@ -56,7 +56,7 @@ python NFMRecommender.py --help
 - you need to add corresponding dataset file into **data** folder
 - make sure you have a **CUDA** enviroment to accelarate since these deep-learning models could be based on it.
 
-## Simple Result Achieved for quick look
+<!-- ## Simple Result Achieved for quick look
 
 | Algo | HR@10 | NDCG@10 | MAP@10 |
 | ------ | ------ | ------ | -- |
@@ -71,5 +71,5 @@ python NFMRecommender.py --help
 | WRMF | 0.586 | 0.833 | 0.451 |
 | BPR-MF | 0.705 | 0.407 | 0.315 |
 | NeuMF | 0.698  | 0.401 | 0.310 |
-| FM | 0.209 | 0.451 | 0.119 |
+| FM | 0.209 | 0.451 | 0.119 | -->
 <!-- | NeuFM(deprecated) | 0.214  | 0.453 | 0.119 | -->
