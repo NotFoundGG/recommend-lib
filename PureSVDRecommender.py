@@ -11,11 +11,11 @@ import os
 import random
 import argparse
 import numpy as np
+import scipy.sparse as sp
 from collections import defaultdict
 
 from util.data_loader import load_rate, WRMFData
 from util.metrics import hr_at_k, ndcg_at_k, mean_average_precision, precision_at_k, recall_at_k, mrr_at_k
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -23,6 +23,10 @@ if __name__ == '__main__':
                         type=int, 
                         default=10, 
                         help='recommend number for rank list')
+    parser.add_argument('--factors', 
+                        type=int, 
+                        default=150, 
+                        help='No. of singular value preserved')
     parser.add_argument('--data_split', 
                         type=str, 
                         default='fo', 
@@ -40,13 +44,14 @@ if __name__ == '__main__':
     src = 'ml-100k'
     dataset = WRMFData(src, data_split=args.data_split, by_time=args.by_time)
 
-    u, s, vh = np.linalg.svd(dataset.train.A, full_matrices=False)
+    assert min(dataset.train.shape) >= args.factors, 'Invalid sigular value number, must be less than the minimum of matrix shape'
+    u, s, vh = sp.linalg.svds(dataset.train.asfptype(), args.factors)
     smat = np.diag(s)
-    predict_mat = np.dot(u, np.dot(smat, vh))
+    predict_mat = u.dot(smat.dot(vh))
 
     # genereate top-N list for test user set
     test_user_set = dataset.test_users
-    ur = defaultdict(list) # u的实际交互item
+    ur = defaultdict(list) # actually interacted items by user u
     index = dataset.test.nonzero()
     for u, i in zip(index[0], index[1]):
         ur[u].append(i)

@@ -34,7 +34,7 @@ python MostPopRecommender.py
 python ItemKNNRecommender.py
 python UserKNNRecommnder.py
 python SliMRecommender.py
-python PureSVDRecommender.py
+python PureSVDRecommender.py --factors=150
 python RSVDRecommender.py
 python SVDppRecommender.py
 python WRMFRecommender.py
