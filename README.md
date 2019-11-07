@@ -15,7 +15,7 @@
 
 2. Item-Ranking recommendation algorithms reimplementation with pytorch, numpy and scipy.
 
-3. Before running, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `maxOS` or `.pyd` file for `WindowsOS` used for further import.
+3. Before running, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `macOS` or `.pyd` file for `WindowsOS` used for further import.
 
 ## The requirements are as follows:
 
