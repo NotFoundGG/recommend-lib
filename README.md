@@ -36,6 +36,7 @@ python UserKNNRecommnder.py
 python SliMRecommender.py
 python PureSVDRecommender.py --factors=150
 python RSVDRecommender.py
+python SVDRecommender.py
 python SVDppRecommender.py
 python WRMFRecommender.py
 python BPRMFRecommender.py --factor_num=16

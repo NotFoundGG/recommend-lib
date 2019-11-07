@@ -3,9 +3,85 @@ import numpy as np
 from collections import defaultdict
 
 class RSVD(object):
-    def __init__(self, user_num, item_num, n_factors=100, n_epochs=20, biased=True, init_mean=0, init_std_dev=.1, lr_all=.005, reg_all=.02, 
-                 lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None, reg_bu=None, reg_bi=None, reg_pu=None, reg_qi=None,
-                 random_state=None, verbose=True):
+    def __init__(self, user_num, item_num, n_factors=96, n_epochs=20, version=2, init_mean=0, init_std_dev=.1, 
+                 lr=.001, reg=.02, reg2=.05, random_state=None, verbose=True):
+        self.user_num = user_num
+        self.item_num = item_num
+
+        self.n_factors = n_factors
+        self.n_epochs = n_epochs
+        self.version = version
+        self.lr = lr
+        self.reg = reg
+        self.reg2 = reg2
+        self.init_mean = init_mean
+        self.init_std_dev = init_std_dev
+        self.random_state = random_state
+        self.verbose = verbose
+    
+    def fit(self, train_set):
+        cdef np.ndarray[np.double_t] ci
+        cdef np.ndarray[np.double_t] dj
+        cdef np.ndarray[np.double_t, ndim=2] ui
+        cdef np.ndarray[np.double_t, ndim=2] vj
+        cdef int i, j, k
+        cdef double r, err, dot, uik, vjk, cii, djj
+        cdef double global_mean = train_set.rating.mean()
+
+        cdef double lr = self.lr
+        cdef double reg = self.reg
+        cdef double reg2 = self.reg2
+
+        ci = np.zeros(self.user_num, np.double)
+        dj = np.zeros(self.item_num, np.double)
+
+        ui = np.random.normal(self.init_mean, self.init_std_dev, size=(self.user_num, self.n_factors))
+        vj = np.random.normal(self.init_mean, self.init_std_dev, size=(self.item_num, self.n_factors))
+
+        for epoch in range(self.n_epochs):
+            if self.verbose:
+                print(f'Processing epoch {epoch}')
+                for _, row in train_set.iterrows():
+                    i, j, r = row['user'], row['item'], row['rating']
+                    dot = 0
+                    for k in range(self.n_factors):
+                        dot += ui[i, k] * vj[j, k]
+                    err = r - (ci[i] + dj[j] + dot)
+
+                    if self.version == 2:
+                        cii = ci[i]
+                        djj = dj[j]
+                        ci[i] += lr * (err - reg2 * (cii + djj - global_mean))
+                        dj[j] += lr * (err - reg2 * (cii + djj - global_mean))
+                    
+                    for k in range(self.n_factors):
+                        uik = ui[i, k]
+                        vjk = vj[j, k]
+                        ui[i, k] += lr * (err * vjk - reg * uik)
+                        vj[j, k] += lr * (err * uik - reg * vjk)
+        
+        self.ci = ci
+        self.dj = dj
+        self.ui = ui
+        self.vj = vj
+
+    def predict(self, i, j):
+        if i >= self.user_num:
+            raise ValueError('Invalid user code')
+        if j >= self.item_num:
+            raise ValueError('Invalid item code')
+        if self.version == 2:
+            est = self.ci[i] + self.dj[j] + np.dot(self.ui[i], self.vj[j])
+        elif self.version == 1:
+            est = np.dot(self.ui[i], self.vj[j])
+
+        return est
+
+
+class SVD(object):
+    def __init__(self, user_num, item_num, n_factors=100, n_epochs=20, biased=True, init_mean=0, init_std_dev=.1, 
+                 lr_all=.005, reg_all=.02, lr_bu=None, lr_bi=None, lr_pu=None, lr_qi=None, reg_bu=None, reg_bi=None, 
+                 reg_pu=None, reg_qi=None, random_state=None, verbose=True):
         self.user_num = user_num
         self.item_num = item_num
 
