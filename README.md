@@ -12,6 +12,9 @@
 
 1. you can also download experiment data from links below: 
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
+    - [MovieLens 1M](https://grouplens.org/datasets/movielens/1m/)
+    - [MovieLens 10M](https://grouplens.org/datasets/movielens/10m/)
+    - [MovieLens 20M](https://grouplens.org/datasets/movielens/20m/)
     - [Netflix Prize Data](https://www.kaggle.com/netflix-inc/netflix-prize-data)
 
 2. Item-Ranking recommendation algorithms reimplementation with pytorch, numpy and scipy.
