@@ -40,7 +40,7 @@ class RSVD(object):
 
         for epoch in range(self.n_epochs):
             if self.verbose:
-                print(f'Processing epoch {epoch}')
+                print(f'Processing epoch {epoch + 1}')
                 for _, row in train_set.iterrows():
                     i, j, r = row['user'], row['item'], row['rating']
                     dot = 0
