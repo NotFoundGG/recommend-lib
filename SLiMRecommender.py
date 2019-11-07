@@ -60,33 +60,33 @@ class SLIM(object):
         print('covariance updates pre-calculating')
         covariance_array = None
         with ProcessPoolExecutor() as executor:
-            covariance_array = np.vstack(executor.map(slim.compute_covariance, [self.A] * n, starts, ends))
+            covariance_array = np.vstack(list(executor.map(slim.compute_covariance, [self.A] * n, starts, ends)))
 
         slim.symmetrize_covariance(covariance_array)
 
         print('coordinate descent for learning W matrix......')
         if self.lambda_is_ratio:
             with ProcessPoolExecutor() as executor:
-                return np.hstack(executor.map(slim.coordinate_descent_lambda_ratio, 
-                                              [self.alpha] * n, 
-                                              [self.lam_bda] * n, 
-                                              [self.max_iter] * n, 
-                                              [self.tol] * n, 
-                                              [self.data.num_user] * n, 
-                                              [self.data.num_item] * n, 
-                                              [covariance_array] * n, 
-                                              starts, ends))
+                return np.hstack(list(executor.map(slim.coordinate_descent_lambda_ratio, 
+                                                   [self.alpha] * n, 
+                                                   [self.lam_bda] * n, 
+                                                   [self.max_iter] * n, 
+                                                   [self.tol] * n, 
+                                                   [self.data.num_user] * n, 
+                                                   [self.data.num_item] * n, 
+                                                   [covariance_array] * n, 
+                                                   starts, ends)))
         else:
             with ProcessPoolExecutor() as executor:
-                return np.hstack(executor.map(slim.coordinate_descent, 
-                                              [self.alpha] * n, 
-                                              [self.lam_bda] * n, 
-                                              [self.max_iter] * n, 
-                                              [self.tol] * n, 
-                                              [self.data.num_user] * n, 
-                                              [self.data.num_item] * n, 
-                                              [covariance_array] * n, 
-                                              starts, ends))
+                return np.hstack(list(executor.map(slim.coordinate_descent, 
+                                                   [self.alpha] * n, 
+                                                   [self.lam_bda] * n, 
+                                                   [self.max_iter] * n, 
+                                                   [self.tol] * n, 
+                                                   [self.data.num_user] * n, 
+                                                   [self.data.num_item] * n, 
+                                                   [covariance_array] * n, 
+                                                   starts, ends)))
     
     def __recommend(self, u, user_AW, user_item_set):
         '''

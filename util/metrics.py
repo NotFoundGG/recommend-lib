@@ -133,12 +133,15 @@ def precision_at_k(r, k):
     return sum(r) / len(r)
 
 def recall_at_k(r, groud_truth_len, k):
-    assert k >= 1
-    r = np.asarray(r)[:k] != 0
-    if r.size != k:
-        raise ValueError('Relevance score length < k')
-    
-    return sum(r) / groud_truth_len
+    if groud_truth_len != 0:
+        assert k >= 1
+        r = np.asarray(r)[:k] != 0
+        if r.size != k:
+            raise ValueError('Relevance score length < k')
+        
+        return sum(r) / groud_truth_len
+    else:
+        return 0
 
 def mrr_at_k(rs):
     res = 0
