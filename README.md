@@ -31,8 +31,8 @@ Default set top-K number to 10, you can change top-K number by modifying `topk` 
 
 ```
 python MostPopRecommender.py
-python ItemKNNRecommender.py
-python UserKNNRecommnder.py
+python ItemKNNRecommender.py --sim_method=pearson
+python UserKNNRecommnder.py --sim_method=jaccard
 python SliMRecommender.py
 python PureSVDRecommender.py --factors=150
 python RSVDRecommender.py

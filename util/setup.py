@@ -41,6 +41,10 @@ extensions = [
     Extension(
         name='slim',
         sources=['slim' + ext],
+        include_dirs=[np.get_include()]),
+    Extension(
+        name='similarities', 
+        sources=['similarities' + ext], 
         include_dirs=[np.get_include()])
 ]
 
