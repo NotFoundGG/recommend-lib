@@ -278,7 +278,10 @@ class SVDpp(object):
             raise ValueError('Invalid item code')
         est += self.bu[u] + self.bi[i]
         Iu = len(self.ur[u]) # # No. of items rated by u
-        u_impl_feedback = (sum(self.yj[j] for (j, _) in self.ur[u]) / np.sqrt(Iu))
+        if Iu == 0:
+            u_impl_feedback = 0
+        else:
+            u_impl_feedback = (sum(self.yj[j] for (j, _) in self.ur[u]) / np.sqrt(Iu))
         est += np.dot(self.qi[i], self.pu[u] + u_impl_feedback)
 
         return est
