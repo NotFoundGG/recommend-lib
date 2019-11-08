@@ -28,6 +28,7 @@
 * numpy>=1.16.2
 * pytorch>=1.0.1
 * sklearn>=0.21.3
+* Cython>=0.29.12
 
 ## Examples to run:
 
