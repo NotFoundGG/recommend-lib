@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 
 from util.knns import KNNWithMeans
 from util.data_loader import load_rate
-from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
+from util.metrics import ndcg_at_k, map_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -49,6 +49,10 @@ if __name__ == '__main__':
                         type=int, 
                         default=0, 
                         help='whether split data by time stamp')
+    parser.add_argument('--val_method', 
+                        type=str, 
+                        default='cv', 
+                        help='method of validation set split method for train set, cv for 5-fold cv, fo for ratio split')
     args = parser.parse_args()
 
     src = args.dataset
@@ -132,7 +136,7 @@ if __name__ == '__main__':
     recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
     print(f'Recall@{args.topk}: {recall_k}')
 
-    map_k = mean_average_precision(list(preds.values()))
+    map_k = map_at_k(list(preds.values()))
     print(f'MAP@{args.topk}: {map_k}')
 
     ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])

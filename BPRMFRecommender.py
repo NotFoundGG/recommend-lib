@@ -22,7 +22,7 @@ import torch.utils.data as data
 import torch.backends.cudnn as cudnn
 
 from util.data_loader import BPRData, load_mat
-from util.metrics import metric_eval, precision_at_k, recall_at_k, mean_average_precision, ndcg_at_k, hr_at_k, mrr_at_k
+from util.metrics import metric_eval, precision_at_k, recall_at_k, map_at_k, ndcg_at_k, hr_at_k, mrr_at_k
 
 # model
 class BPR(nn.Module):
@@ -149,15 +149,15 @@ if __name__ == '__main__':
             count += 1
 
         model.eval()
-        HR, NDCG, MAP = metric_eval(model, test_loader, args.top_k)
+        HR, NDCG = metric_eval(model, test_loader, args.top_k)
 
         elapsed_time = time.time() - start_time
         print('The time elapse of epoch {:03d}'.format(epoch + 1) + ' is: ' + 
 			time.strftime("%H: %M: %S", time.gmtime(elapsed_time)))
-        # print("HR: {:.3f}\tNDCG: {:.3f}\tMAP: {:.3f}".format(np.mean(HR), np.mean(NDCG), np.mean(MAP)))
+        # print("HR: {:.3f}\tNDCG: {:.3f}}".format(np.mean(HR), np.mean(NDCG)))
 
         if HR > best_hr:
-            best_hr, best_ndcg, best_map, best_epoch = HR, NDCG, MAP, epoch
+            best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
             if args.out:
                 if not os.path.exists(f'./models/{src}/'):
                     os.makedirs(f'./models/{src}/')
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     recall_k = np.mean([recall_at_k(r, len(ur[u]), args.top_k) for u, r in preds.items()])
     print(f'Recall@{args.top_k}: {recall_k}')
 
-    map_k = mean_average_precision(list(preds.values()))
+    map_k = map_at_k(list(preds.values()))
     print(f'MAP@{args.top_k}: {map_k}')
 
     ndcg_k = np.mean([ndcg_at_k(r, args.top_k) for r in preds.values()])

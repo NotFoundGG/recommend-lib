@@ -20,7 +20,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 from util import slim
 from util.data_loader import SlimData
-from util.metrics import mean_average_precision, ndcg_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
+from util.metrics import map_at_k, ndcg_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 
 class SLIM(object):
     def __init__(self, data):
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
     print(f'Recall@{args.topk}: {recall_k}')
 
-    map_k = mean_average_precision(list(preds.values()))
+    map_k = map_at_k(list(preds.values()))
     print(f'MAP@{args.topk}: {map_k}')
 
     ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])

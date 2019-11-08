@@ -19,7 +19,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 
 from util.data_loader import load_rate, WRMFData
-from util.metrics import hr_at_k, ndcg_at_k, mean_average_precision, precision_at_k, recall_at_k, mrr_at_k
+from util.metrics import hr_at_k, ndcg_at_k, map_at_k, precision_at_k, recall_at_k, mrr_at_k
 
 class WRMF(object):
     def __init__(self, train_set, lambda_val=0.1, alpha=40, iterations=10, factor_num=20, seed=2019):
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
     print(f'Recall@{args.topk}: {recall_k}')
 
-    map_k = mean_average_precision(list(preds.values()))
+    map_k = map_at_k(list(preds.values()))
     print(f'MAP@{args.topk}: {map_k}')
 
     ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])

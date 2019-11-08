@@ -23,7 +23,7 @@ import torch.utils.data as data
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
-from util.metrics import metrics_nfm, mean_average_precision, ndcg_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
+from util.metrics import metrics_nfm, map_at_k, ndcg_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 from util.data_loader import load_libfm, map_features, FMData
 
 class NFM(nn.Module):
@@ -422,7 +422,7 @@ if __name__ == '__main__':
     recall_k = np.mean([recall_at_k(r, len(ground_truth[u]), top_k) for u, r in preds.items()])
     print(f'Recall@{top_k}: {recall_k}')
 
-    map_k = mean_average_precision(list(preds.values()))
+    map_k = map_at_k(list(preds.values()))
     print(f'MAP@{top_k}: {map_k}')
 
     ndcg_k = np.mean([ndcg_at_k(r, top_k) for r in preds.values()])

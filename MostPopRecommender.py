@@ -15,7 +15,7 @@ from collections import defaultdict
 from sklearn.model_selection import train_test_split
 
 from util.data_loader import load_rate
-from util.metrics import ndcg_at_k, mean_average_precision, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
+from util.metrics import ndcg_at_k, map_at_k, hr_at_k, precision_at_k, recall_at_k, mrr_at_k
 
 class MostPopRecommender(object):
     def __init__(self, N=5):
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     recall_k = np.mean([recall_at_k(r, len(ur[u]), k) for u, r in preds.items()])
     print(f'Recall@{k}: {recall_k}')
 
-    map_k = mean_average_precision(list(preds.values()))
+    map_k = map_at_k(list(preds.values()))
     print(f'MAP@{k}: {map_k}')
 
     ndcg_k = np.mean([ndcg_at_k(r, k) for r in preds.values()])

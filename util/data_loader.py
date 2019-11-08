@@ -8,6 +8,7 @@
 @Description: data utils
 '''
 import os
+import gc
 import random
 from collections import defaultdict
 
@@ -137,6 +138,31 @@ def load_rate(src='ml-100k'):
         df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
                         names=['user', 'item', 'rating', 'timestamp'], engine='python')
         df.sort_values(['user', 'item', 'timestamp'], inplace=True)
+    elif src == 'netflix':
+        # df = pd.DataFrame()
+        # for i in range(1, 5):
+        #     tmp = pd.read_csv(f'./data/netflix/combined_data_{i}.txt', header=None, names = ['user', 'rating'], usecols=[0, 1])
+        #     tmp['rating'] = tmp.rating.astype(float)
+        #     df = pd.concat([df, tmp], ignore_index=True)
+        #     del tmp
+        #     gc.collect()
+        # df_nan = pd.DataFrame(pd.isna(df.rating))
+        # df_nan = df_nan[df_nan['rating']==True]
+        # df_nan = df_nan.reset_index()
+        # movie_np = []
+        # movie_id = 1
+        # for i, j in zip(df_nan['index'][1:], df_nan['index'][:-1]):
+        #     temp = np.full((1, i-j-1), movie_id)
+        #     movie_np = np.append(movie_np, temp)
+        #     movie_id += 1
+        # last_record = np.full((1, len(df) - df_nan.iloc[-1, 0] - 1),movie_id)
+        # movie_np = np.append(movie_np, last_record)
+
+        # df = df[pd.notnull(df['rating'])]
+        # df['item'] = movie_np.astype(int)
+        # df['user'] = df['user'].astype(int)
+        pass
+
 
     return df
 
