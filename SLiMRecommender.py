@@ -8,6 +8,7 @@
 @Description: SLIM recommender
 '''
 import os
+import gc
 import time
 import random
 import argparse
@@ -15,6 +16,7 @@ import operator
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
@@ -172,10 +174,14 @@ if __name__ == '__main__':
                         type=str, 
                         default='ml-100k', 
                         help='select dataset')
+    parser.add_argument('--val_method', 
+                        type=str, 
+                        default='loo', 
+                        help='validation method, options: cv, tfo, loo, tloo')
     args = parser.parse_args()
 
     src = args.dataset
-    slim_data= SlimData(src, args.data_split, args.by_time)
+    slim_data= SlimData(src, args.data_split, args.by_time, args.val_method)
 
     # genereate top-N list for test user set
     test_user_set = list({ele[0] for ele in slim_data.test})

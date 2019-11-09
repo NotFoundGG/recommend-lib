@@ -20,7 +20,7 @@ import torch.utils.data as data
 from scipy.sparse import csr_matrix, coo_matrix
 from scipy.io import mmread
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 
 ML100K_NUMERIC_COLS = ['age']
 IGNORE_COLS = ['user', 'item']
@@ -28,7 +28,7 @@ TARGET_COLS = ['rating']
 
 # SLIM data loader 
 class SlimData(object):
-    def __init__(self, src='ml-100k', data_split='fo', by_time=0):
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv'):
         print('Start read raw data')        
         self.df = load_rate(src)
         self.df['user'] = pd.Categorical(self.df['user']).codes
@@ -37,6 +37,8 @@ class SlimData(object):
         self.num_item = self.df.item.nunique()
         train_df, test_df = self.__split_data(data_split, by_time)
         
+        self.train_list, self.val_list = self.__get_validation(train_df, val_method)
+
         self.train, self.test = [], []
         for _, row in train_df.iterrows():
             self.train.append([row['user'], row['item']])
@@ -44,6 +46,45 @@ class SlimData(object):
             self.test.append([row['user'], row['item']])
         print(f'{len(self.df)} data records, train set: {len(self.train)}, test set: {len(self.test)}, user num: {self.num_user}, item num: {self.num_item}')
         del self.df
+
+    def __get_validation(self, train_df, val_method):
+        train_list, val_list = [], []
+        if val_method == 'loo':
+            val_set = train_df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+            val_key = val_set[['user', 'item']].copy()
+            train_set = train_df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy()
+
+            train_list.append(train_set)
+            val_list.append(val_set)
+        elif val_method == 'tfo':
+            train_df = train_df.sample(frac=1)
+            train_df = train_df.sort_values(['timestamp']).reset_index(drop=True)
+
+            split_idx = int(np.ceil(len(train_df) * 0.9))
+            train_set, val_set = train_df.iloc[:split_idx, :].copy(), train_df.iloc[split_idx:, :].copy()
+
+            train_list.append(train_set)
+            val_list.append(val_set)
+        elif val_method == 'tloo':
+            train_df = train_df.sample(frac=1)
+            train_df = train_df.sort_values(['timestamp']).reset_index(drop=True)
+
+            train_df['rank_latest'] = train_df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            new_train_set = train_df[train_df['rank_latest'] > 1].copy()
+            val_set = train_df[train_df['rank_latest'] == 1].copy()
+            del new_train_set['rank_latest'], val_set['rank_latest']
+
+            train_list.append(new_train_set)
+            val_list.append(val_set)
+        elif val_method == 'cv':
+            kf = KFold(n_splits=5, shuffle=False, random_state=2019)
+            for train_index, val_index in kf.split(train_df):
+                train_list.append(train_df.iloc[train_index, :])
+                val_list.append(train_df.iloc[val_index, :])
+        else:
+            raise ValueError('Invalid data_split value, expect: loo, fo')
+        
+        return train_list, val_list
 
     def __split_data(self, data_split, by_time):
         '''without time stemp'''
