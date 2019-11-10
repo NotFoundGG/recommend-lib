@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-04 14:39:43
+@LastEditTime: 2019-11-09 11:54:46
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -37,15 +37,27 @@ class SlimData(object):
         self.num_item = self.df.item.nunique()
         train_df, test_df = self.__split_data(data_split, by_time)
         
-        self.train_list, self.val_list = self.__get_validation(train_df, val_method)
+        train_list, val_list = self.__get_validation(train_df, val_method)
 
-        self.train, self.test = [], []
-        for _, row in train_df.iterrows():
-            self.train.append([row['user'], row['item']])
+        self.train, self.val = [], []
+        for i in range(len(train_list)):
+            sub_train, sub_val = [], []
+            for _, row in train_list[i].iterrows():
+                sub_train.append([row['user'], row['item']])
+            for _, row in val_list[i].iterrows():
+                sub_val.append([row['user'], row['item']])
+            self.train.append(sub_train)
+            self.val.append(sub_val)
+
+        self.test = []
         for _, row in test_df.iterrows():
             self.test.append([row['user'], row['item']])
-        print(f'{len(self.df)} data records, train set: {len(self.train)}, test set: {len(self.test)}, user num: {self.num_user}, item num: {self.num_item}')
-        del self.df
+        print(f'{len(self.df)} data records, user num: {self.num_user}, item num: {self.num_item}')
+        print(f'Use {val_method} validation method......')
+        for i in range(len(self.train)):
+            print(f'train set [{i + 1}]: {len(self.train[i])} val set [{i + 1}]: {len(self.val[i])}')
+        print(f'test set: {len(self.test)}')
+        del self.df    
 
     def __get_validation(self, train_df, val_method):
         train_list, val_list = [], []
