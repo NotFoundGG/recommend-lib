@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-01 15:30:47
+@LastEditTime: 2019-11-10 19:05:53
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SVD recommender, also known as BiasMF
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     algo_list = []
     for i in range(len(train_set_list)):
         print(f'Start train model with fold {i + 1}')
-        algo = SVD(user_num, item_num, n_factors=args.factors, n_epochs=args.epochs, lr_all=args.lr, reg_all=args.reg)
+        algo = SVD(user_num, item_num, n_factors=args.factors, n_epochs=args.epochs, biased=False, lr_all=args.lr, reg_all=args.reg)
         algo.fit(train_set)
         algo_list.append(algo)
 
