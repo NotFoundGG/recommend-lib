@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-11-10 13:46:08
+@LastEditTime: 2019-11-10 18:01:45
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
@@ -90,14 +90,17 @@ class SLIM(object):
                                                    [covariance_array] * n, 
                                                    starts, ends)))
     
-    def __recommend(self, u, user_AW, user_item_set):
+    def __recommend(self, u, user_AW, user_item_set, method='test'):
         '''
         generate N recommend items for user
         :param user_AW: the user row of the result of matrix dot product of A and W
         :param user_item_set: item interacted in train set for user 
         :return: recommend list for user
         '''
-        truth = self.ur[u]
+        if method == 'test':
+            truth = self.ur[u]
+        elif method == 'val':
+            truth = self.val_ur[u]
         max_i_num = 100
         if len(truth) < 100:
             cands_num = max_i_num - len(truth)
@@ -112,7 +115,7 @@ class SLIM(object):
             rank[i] = user_AW[i]
         return [items[0] for items in sorted(rank.items(), key=operator.itemgetter(1), reverse=True)[:self.N]]
 
-    def __get_recommendation(self):
+    def __get_recommendation(self, method='test'):
         train_user_items = [set() for u in range(self.data.num_user)]
         for user, item in self.data.train[self.i]:
             train_user_items[user].add(item)
@@ -121,11 +124,11 @@ class SLIM(object):
         # recommend N items for each user
         recommendation = []
         for u, user_AW, user_item_set in zip(range(self.data.num_user), AW, train_user_items):
-            recommendation.append(self.__recommend(u, user_AW, user_item_set))
+            recommendation.append(self.__recommend(u, user_AW, user_item_set, method))
         return recommendation
 
     def compute_recommendation(self, alpha=0.5, lam_bda=0.02, max_iter=1000, tol=0.0001, N=10, 
-                               ground_truth=None, lambda_is_ratio=True):
+                               ground_truth=None, val_ur=None, lambda_is_ratio=True):
         self.alpha = alpha
         self.lam_bda = lam_bda
         self.max_iter = max_iter
@@ -134,11 +137,16 @@ class SLIM(object):
         self.lambda_is_ratio = lambda_is_ratio
         self.ur = ground_truth
 
+        self.val_ur = val_ur
+
         print(f'Start calculating W matrix(alpha={self.alpha}, lambda={self.lam_bda}, max_iter={self.max_iter}, tol={self.tol})')
         self.W = self.__aggregation_coefficients()
 
+        print(f'Start calculating validation recommendation list(N={self.N})')
+        self.val_recommendation = self.__get_recommendation('val')
+
         print(f'Start calculating recommendation list(N={self.N})')
-        self.recommendation = self.__get_recommendation()
+        self.recommendation = self.__get_recommendation('test')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -200,19 +208,19 @@ if __name__ == '__main__':
     recommender_list = []
     val_kpi = []
     fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
+    start_time = time.time()
     for i in range(len(slim_data.train)):
-        start_time = time.time()
+        val_ur = val_ur_list[i]
         recommend = SLIM(slim_data, i)
         recommend.compute_recommendation(alpha=args.alpha, lam_bda=args.elastic, max_iter=args.epochs, 
-                                         tol=args.tol, N=args.topk, ground_truth=ur)
+                                         tol=args.tol, N=args.topk, ground_truth=ur, val_ur=val_ur)
         print('Finish train model and generate topN list')
         recommender_list.append(recommend)
 
         # validation predictions
         preds = {}
-        val_ur = val_ur_list[i]
         for u in val_ur.keys():
-            preds[u] = recommend.recommendation[u]
+            preds[u] = recommend.val_recommendation[u]
         for u in preds.keys():
             preds[u] = [1 if e in val_ur[u] else 0 for e in preds[u]]
         
