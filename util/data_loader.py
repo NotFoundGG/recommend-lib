@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-09 11:54:46
+@LastEditTime: 2019-11-11 15:36:02
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -128,7 +128,7 @@ class SlimData(object):
             
 ########################################################################################################
 class WRMFData(object):
-    def __init__(self, src='ml-100k', data_split='fo', by_time=0):
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv'):
         self.df = load_rate(src)
         self.data_split = data_split
         self.by_time = by_time
@@ -143,6 +143,72 @@ class WRMFData(object):
         self.mat = sp.csr_matrix((ratings, (rows, cols)), shape=(self.user_num, self.item_num))
         self.train, self.test, self.test_users = self._split_data()
 
+        self._split_train(val_method)
+    
+    def _split_train(self, val_method):
+        self.train_list, self.val_users_list = [], []
+        val_set = self.train.copy()
+        val_set[val_set != 0] = 1
+        self.val = val_set
+
+        if val_method == 'cv':
+            kf = KFold(n_splits=5, shuffle=False, random_state=2019)
+            for _, val_index in kf.split(self.val_df):
+                sub_training_set = self.train.copy()
+                tmp = self.val_df.iloc[val_index, :]
+                user_index = [u for u in tmp.user]
+                item_index = [i for i in tmp.item]
+                sub_training_set[user_index, item_index] = 0
+                sub_training_set.eliminate_zeros()
+
+                self.train_list.append(sub_training_set)
+                self.val_users_list.append(list(set(user_index)))
+        elif val_method == 'tloo':
+            self.val_df = self.val_df.sample(frac=1)
+            self.val_df = self.val_df.sort_values(['timestamp']).reset_index(drop=True)
+
+            self.val_df['rank_latest'] = self.val_df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            tmp = self.val_df[self.val_df['rank_latest'] == 1].copy()
+            del self.val_df['rank_latest']
+
+            user_index = [u for u in tmp.user]
+            item_index = [i for i in tmp.item]
+            sub_training_set = self.train.copy()
+            sub_training_set[user_index, item_index] = 0
+            sub_training_set.eliminate_zeros()
+
+            self.train_list.append(sub_training_set)
+            self.val_users_list.append(list(set(user_index)))
+        elif val_method == 'loo':
+            tmp = self.val_df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+            user_index = [u for u in tmp.user]
+            item_index = [i for i in tmp.item]
+
+            sub_training_set = self.train.copy()
+            sub_training_set[user_index, item_index] = 0
+            sub_training_set.eliminate_zeros()
+
+            self.train_list.append(sub_training_set)
+            self.val_users_list.append(list(set(user_index)))
+        elif val_method == 'tfo':
+            self.val_df = self.val_df.sample(frac=1)
+            self.val_df = self.val_df.sort_values(['timestamp']).reset_index(drop=True)
+
+            split_idx = int(np.ceil(len(self.val_df) * 0.9))
+            tmp = self.val_df.iloc[split_idx:, :].copy()
+            user_index = [u for u in tmp.user]
+            item_index = [i for i in tmp.item]
+            sub_training_set = self.train.copy()
+            sub_training_set[user_index, item_index] = 0
+            sub_training_set.eliminate_zeros()
+
+            self.train_list.append(sub_training_set)
+            self.val_users_list.append(list(set(user_index)))
+        else:
+            raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
+
+        del self.train
+
     def _split_data(self, pct_test=0.2):
         test_set = self.mat.copy()
         test_set[test_set != 0] = 1
@@ -151,20 +217,27 @@ class WRMFData(object):
             if self.by_time:
                 self.df = self.df.sample(frac=1)
                 self.df = self.df.sort_values(['timestamp']).reset_index(drop=True)
-                split_idx = int(np.ceil(len(self.df) * 0.8))
+                split_idx = int(np.ceil(len(self.df) * (1 - pct_test)))
                 samples = self.df.iloc[split_idx:, :].copy()
                 user_index = [u for u in samples.user]
                 item_index = [i for i in samples.item]
+
+                self.val_df = self.df.iloc[:split_idx, :].reset_index(drop=True)
             else:
-                nonzero_index = training_set.nonzero()
-                nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
-                random.seed(0)
-                # Round the number of samples needed to the nearest integer
-                num_samples = int(np.ceil(pct_test * len(nonzero_pairs)))
-                # remove num_samples values from nonzero_pairs
-                samples = random.sample(nonzero_pairs, num_samples)
-                user_index = [index[0] for index in samples]
-                item_index = [index[1] for index in samples]
+                val_df, samples = train_test_split(self.df, test_size=pct_test)
+                user_index = [u for u in samples.user]
+                item_index = [i for i in samples.item]
+
+                self.val_df = val_df.reset_index(drop=True)
+                # nonzero_index = training_set.nonzero()
+                # nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
+                # random.seed(0)
+                # # Round the number of samples needed to the nearest integer
+                # num_samples = int(np.ceil(pct_test * len(nonzero_pairs)))
+                # # remove num_samples values from nonzero_pairs
+                # samples = random.sample(nonzero_pairs, num_samples)
+                # user_index = [index[0] for index in samples]
+                # item_index = [index[1] for index in samples]
         elif self.data_split == 'loo':
             if self.by_time:
                 self.df = self.df.sample(frac=1)
@@ -173,10 +246,16 @@ class WRMFData(object):
                 samples = self.df[self.df['rank_latest'] == 1].copy()
                 user_index = [u for u in samples.user]
                 item_index = [i for i in samples.item]
+
+                self.val_df = self.df[self.df['rank_latest'] > 1].copy()
+                del self.val_df['rank_latest']
             else:
                 samples = self.df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
                 user_index = [u for u in samples.user]
                 item_index = [i for i in samples.item]
+
+                val_key = samples[['user', 'item']].copy()
+                self.val_df = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy()
         else:
             raise ValueError('Invalid data_split value, expect: loo, fo')
         training_set[user_index, item_index] = 0
