@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-04 17:36:03
+ * @LastEditTime: 2019-11-11 10:11:05
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -39,9 +39,9 @@ python MostPopRecommender.py
 python ItemKNNRecommender.py --sim_method=pearson
 python UserKNNRecommnder.py --sim_method=jaccard
 python SLiMRecommender.py
+python MFRecommender.py --biased=False
 python PureSVDRecommender.py --factors=150
 python RSVDRecommender.py
-python SVDRecommender.py
 python SVDppRecommender.py
 python WRMFRecommender.py
 python BPRMFRecommender.py --factor_num=16

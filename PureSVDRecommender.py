@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-30 13:52:23
 @LastEditors: Yudi
-@LastEditTime: 2019-11-01 15:45:17
+@LastEditTime: 2019-11-11 10:12:30
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Pure SVD
@@ -39,9 +39,13 @@ if __name__ == '__main__':
                         type=str, 
                         default='ml-100k', 
                         help='select dataset')
+    parser.add_argument('--val_method', 
+                        type=str, 
+                        default='cv', 
+                        help='validation method, options: cv, tfo, loo, tloo')
     args = parser.parse_args()
 
-    src = 'ml-100k'
+    src = args.dataset
     dataset = WRMFData(src, data_split=args.data_split, by_time=args.by_time)
 
     assert min(dataset.train.shape) >= args.factors, 'Invalid sigular value number, must be less than the minimum of matrix shape'
