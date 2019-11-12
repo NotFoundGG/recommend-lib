@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-11 10:11:05
+ * @LastEditTime: 2019-11-12 14:38:36
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -30,6 +30,27 @@
 * sklearn>=0.21.3
 * Cython>=0.29.12
 
+## Overview for all algorithms
+
+| Algo. | File | Reference |
+| ------ | ------ | ------ |
+| Popular | MostPopRecommender.py | - |
+| Item-KNN | ItemKNNRecommender.py | - |
+| User-KNN | UserKNNRecommender.py | - |
+| SLiM | SLiMRecommender.py | |
+| PMF | MFRecommender.py | |
+| BiasMF| MFRecommender.py | |
+| SVD++ | SVDppRecommender.py | |
+| RSVD2 | RSVDRecommender.py | |
+| WRMF | WRMFRecommender.py |  |
+| BPR-MF | BPRMFRecommender.py |  |
+| FM | NFMRecommender.py |  |
+| NeuFM | NFMRecommender.py |  |
+| NeuMF | NCFRecommender.py |  |
+| eALS |  | https://arxiv.org/pdf/1708.05024.pdf |
+| Item2Vec |  | https://arxiv.org/vc/arxiv/papers/1603/1603.04259v2.pdf |
+| CDAE |  | http://alicezheng.org/papers/wsdm16-cdae.pdf |
+
 ## Examples to run:
 
 Default set top-K number to 10, you can change top-K number by modifying `topk` argument.
@@ -41,7 +62,6 @@ python UserKNNRecommnder.py --sim_method=jaccard
 python SLiMRecommender.py
 python MFRecommender.py --biased=False
 python PureSVDRecommender.py --factors=150
-python RSVDRecommender.py
 python SVDppRecommender.py
 python WRMFRecommender.py
 python BPRMFRecommender.py --factor_num=16
