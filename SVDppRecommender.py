@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 14:56:12
+@LastEditTime: 2019-11-12 15:29:10
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SVDpp recommender, also known as SVD++
@@ -228,7 +228,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()))
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
         fnl_hr.append(hr_k)
         
         mrr_k = mrr_at_k(list(preds.values()))

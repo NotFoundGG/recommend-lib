@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-11-01 15:12:47
+@LastEditTime: 2019-11-12 15:22:04
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     ndcg_k = np.mean([ndcg_at_k(r, k) for r in preds.values()])
     print(f'NDCG@{k}: {ndcg_k}')
 
-    hr_k = hr_at_k(list(preds.values()))
+    hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
     print(f'HR@{k}: {hr_k}')
 
     mrr_k = mrr_at_k(list(preds.values()))

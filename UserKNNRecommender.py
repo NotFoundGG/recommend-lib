@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 14:55:10
+@LastEditTime: 2019-11-12 15:29:42
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
@@ -233,7 +233,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()))
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
         fnl_hr.append(hr_k)
         
         mrr_k = mrr_at_k(list(preds.values()))

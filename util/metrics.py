@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 13:41:24
 @LastEditors: Yudi
-@LastEditTime: 2019-11-04 17:35:27
+@LastEditTime: 2019-11-12 15:24:55
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: metrics for top-N recommendation results
@@ -156,8 +156,15 @@ def map_at_k(rs):
     '''
     return np.mean([average_precision(r) for r in rs])
 
-def hr_at_k(rs):
-    return np.mean(rs)
+def hr_at_k(rs, us, ur):
+    assert len(rs) == len(us)
+    nom, denom = 0, 0
+    for idx in range(len(rs)):
+        u = us[idx]
+        nom += np.sum(rs[idx])
+        denom += len(ur[u])
+
+    return nom / denom
 
 def dcg_at_k(r, k):
     '''
