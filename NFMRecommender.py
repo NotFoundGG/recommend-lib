@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-03 22:12:25
+@LastEditTime: 2019-11-12 14:48:01
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -245,10 +245,6 @@ if __name__ == '__main__':
                         type=int, 
                         default=0, 
                         help='whether split data by time stamp')
-    parser.add_argument('--dataset', 
-                        type=str, 
-                        default='ml-100k', 
-                        help='Select dataset')
     args = parser.parse_args()
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu

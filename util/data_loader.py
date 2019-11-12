@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-11 15:36:02
+@LastEditTime: 2019-11-12 14:46:36
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -303,32 +303,34 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0):
     df = load_rate(src)
 
     if src == 'ml-100k':
-        user_info = pd.read_csv(f'./data/{src}/u.user', sep='|', header=None, engine='python', 
-                                names=['user', 'age', 'gender', 'occupation', 'zip_code'])
-        item_info = pd.read_csv(f'./data/{src}/u.item', sep='|', header=None, engine='python',
-                                names=['item', 'movie_title', 'release_date', 'video_release_date', 
-                                    'IMDb_URL', 'unknown', 'Action', 'Adventure', 'Animation', 
-                                    'Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 
-                                    'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
-                                    'Thriller', 'War', 'Western'])
+        # user_info = pd.read_csv(f'./data/{src}/u.user', sep='|', header=None, engine='python', 
+        #                         names=['user', 'age', 'gender', 'occupation', 'zip_code'])
+        # item_info = pd.read_csv(f'./data/{src}/u.item', sep='|', header=None, engine='python',
+        #                         names=['item', 'movie_title', 'release_date', 'video_release_date', 
+        #                             'IMDb_URL', 'unknown', 'Action', 'Adventure', 'Animation', 
+        #                             'Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 
+        #                             'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
+        #                             'Thriller', 'War', 'Western'])
 
-        df = df.merge(user_info, on='user', how='left').merge(item_info, on='item', how='left')
-        df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
-                    'zip_code', 'release_date'], axis=1, inplace=True)
+        # df = df.merge(user_info, on='user', how='left').merge(item_info, on='item', how='left')
+        # df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
+        #             'zip_code', 'release_date'], axis=1, inplace=True)
 
         # rating >=4 interaction =1
         df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
 
         df['user'] = pd.Categorical(df.user).codes
         df['item'] = pd.Categorical(df.item).codes
-        df['gender'] = pd.Categorical(df.gender).codes
-        df['occupation'] = pd.Categorical(df.occupation).codes
+        # df['gender'] = pd.Categorical(df.gender).codes
+        # df['occupation'] = pd.Categorical(df.occupation).codes
         df = df[[col for col in df.columns if col not in ML100K_NUMERIC_COLS]].copy()
 
-        user_tag_info = df[['user', 'gender', 'occupation']].copy()
-        item_tag_info = df[['item', 'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy', 
-                            'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 
-                            'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']].copy()
+        # user_tag_info = df[['user', 'gender', 'occupation']].copy()
+        # item_tag_info = df[['item', 'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy', 
+        #                     'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 
+        #                     'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']].copy()
+        user_tag_info = df[['user']].copy()
+        item_tag_info = df[['item']].copy()
         user_tag_info = user_tag_info.drop_duplicates()
         item_tag_info = item_tag_info.drop_duplicates()
 
