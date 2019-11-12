@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-12 14:38:36
+ * @LastEditTime: 2019-11-12 17:03:46
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -15,7 +15,10 @@
     - [MovieLens 1M](https://grouplens.org/datasets/movielens/1m/)
     - [MovieLens 10M](https://grouplens.org/datasets/movielens/10m/)
     - [MovieLens 20M](https://grouplens.org/datasets/movielens/20m/)
-    - [Netflix Prize Data](https://www.kaggle.com/netflix-inc/netflix-prize-data)
+    - [Netflix Prize Data](https://archive.org/download/nf_prize_dataset.tar)
+    - [CiteULike](https://github.com/js05212/citeulike-a)
+    - [Amazon](http://jmcauley.ucsd.edu/data/amazon/links.html)
+    - [Yelp]()
 
 2. Item-Ranking recommendation algorithms reimplementation with pytorch, numpy and scipy.
 
@@ -32,24 +35,24 @@
 
 ## Overview for all algorithms
 
-| Algo. | File | Reference |
+| Algo. | File | Refer. |
 | ------ | ------ | ------ |
 | Popular | MostPopRecommender.py | - |
 | Item-KNN | ItemKNNRecommender.py | - |
 | User-KNN | UserKNNRecommender.py | - |
-| SLiM | SLiMRecommender.py | |
-| PMF | MFRecommender.py | |
-| BiasMF| MFRecommender.py | |
+| SLiM | SLiMRecommender.py | SLIM: Sparse Linear Methods for Top-N Recommender Systems |
+| MF | MFRecommender.py | |
+| PureSVD | PureSVDRecommender.py | Performance of recommender algorithms on top-N recommendation tasks |
 | SVD++ | SVDppRecommender.py | |
-| RSVD2 | RSVDRecommender.py | |
 | WRMF | WRMFRecommender.py |  |
 | BPR-MF | BPRMFRecommender.py |  |
 | FM | NFMRecommender.py |  |
 | NeuFM | NFMRecommender.py |  |
 | NeuMF | NCFRecommender.py |  |
-| eALS |  | https://arxiv.org/pdf/1708.05024.pdf |
-| Item2Vec |  | https://arxiv.org/vc/arxiv/papers/1603/1603.04259v2.pdf |
-| CDAE |  | http://alicezheng.org/papers/wsdm16-cdae.pdf |
+| Item2Vec |  | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
+| AutoRec |  | AutoRec: Autoencoders Meet Collaborative Filtering |
+<!-- | eALS |  | https://arxiv.org/pdf/1708.05024.pdf | -->
+
 
 ## Examples to run:
 
