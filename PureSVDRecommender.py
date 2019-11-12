@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-30 13:52:23
 @LastEditors: Yudi
-@LastEditTime: 2019-11-11 18:07:20
+@LastEditTime: 2019-11-12 15:01:07
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Pure SVD
@@ -44,10 +44,15 @@ if __name__ == '__main__':
                         type=str, 
                         default='cv', 
                         help='validation method, options: cv, tfo, loo, tloo')
+    parser.add_argument('--fold_num', 
+                        type=int, 
+                        default=5, 
+                        help='No. of folds for cross-validation')
     args = parser.parse_args()
 
     src = args.dataset
-    dataset = WRMFData(src, data_split=args.data_split, by_time=args.by_time, val_method=args.val_method)
+    dataset = WRMFData(src, data_split=args.data_split, by_time=args.by_time, 
+                       val_method=args.val_method, fold_num=args.fold_num)
 
     # calculate metrics
     print(f'Start Calculating KPI metrics, validation method: {args.val_method}......')

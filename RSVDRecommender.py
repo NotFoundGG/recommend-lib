@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-01 15:30:47
+@LastEditTime: 2019-11-12 14:56:27
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Regularized SVD recommender, contain RSVD RSVD2
@@ -71,6 +71,10 @@ if __name__ == '__main__':
                         type=str, 
                         default='tfo', 
                         help='validation method, options: cv, tfo, loo, tloo')
+    parser.add_argument('--fold_num', 
+                        type=int, 
+                        default=5, 
+                        help='No. of folds for cross-validation')
     args = parser.parse_args()
 
     src = args.dataset
@@ -107,7 +111,7 @@ if __name__ == '__main__':
     train_set_list, val_set_list = [], []
     # train validation split
     if args.val_method == 'cv': # 5-fold
-        kf = KFold(n_splits=5, shuffle=False, random_state=2019)
+        kf = KFold(n_splits=args.fold_num, shuffle=False, random_state=2019)
         for train_index, val_index in kf.split(train_set):
             train_set_list.append(train_set.iloc[train_index, :])
             val_set_list.append(train_set.iloc[val_index, :])

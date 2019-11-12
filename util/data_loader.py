@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 14:46:36
+@LastEditTime: 2019-11-12 15:00:09
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -28,7 +28,7 @@ TARGET_COLS = ['rating']
 
 # SLIM data loader 
 class SlimData(object):
-    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv'):
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5):
         print('Start read raw data')        
         self.df = load_rate(src)
         self.df['user'] = pd.Categorical(self.df['user']).codes
@@ -37,7 +37,7 @@ class SlimData(object):
         self.num_item = self.df.item.nunique()
         train_df, test_df = self.__split_data(data_split, by_time)
         
-        train_list, val_list = self.__get_validation(train_df, val_method)
+        train_list, val_list = self.__get_validation(train_df, val_method, fold_num)
 
         self.train, self.val = [], []
         for i in range(len(train_list)):
@@ -59,7 +59,7 @@ class SlimData(object):
         print(f'test set: {len(self.test)}')
         del self.df    
 
-    def __get_validation(self, train_df, val_method):
+    def __get_validation(self, train_df, val_method, fold_num):
         train_list, val_list = [], []
         if val_method == 'loo':
             val_set = train_df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
@@ -89,7 +89,7 @@ class SlimData(object):
             train_list.append(new_train_set)
             val_list.append(val_set)
         elif val_method == 'cv':
-            kf = KFold(n_splits=5, shuffle=False, random_state=2019)
+            kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
             for train_index, val_index in kf.split(train_df):
                 train_list.append(train_df.iloc[train_index, :])
                 val_list.append(train_df.iloc[val_index, :])
@@ -128,7 +128,7 @@ class SlimData(object):
             
 ########################################################################################################
 class WRMFData(object):
-    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv'):
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5):
         self.df = load_rate(src)
         self.data_split = data_split
         self.by_time = by_time
@@ -143,16 +143,16 @@ class WRMFData(object):
         self.mat = sp.csr_matrix((ratings, (rows, cols)), shape=(self.user_num, self.item_num))
         self.train, self.test, self.test_users = self._split_data()
 
-        self._split_train(val_method)
+        self._split_train(val_method, fold_num)
     
-    def _split_train(self, val_method):
+    def _split_train(self, val_method, fold_num):
         self.train_list, self.val_users_list = [], []
         val_set = self.train.copy()
         val_set[val_set != 0] = 1
         self.val = val_set
 
         if val_method == 'cv':
-            kf = KFold(n_splits=5, shuffle=False, random_state=2019)
+            kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
             for _, val_index in kf.split(self.val_df):
                 sub_training_set = self.train.copy()
                 tmp = self.val_df.iloc[val_index, :]

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-11-10 18:01:45
+@LastEditTime: 2019-11-12 14:59:05
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
@@ -186,10 +186,14 @@ if __name__ == '__main__':
                         type=str, 
                         default='cv', 
                         help='validation method, options: cv, tfo, loo, tloo')
+    parser.add_argument('--fold_num', 
+                        type=int, 
+                        default=5, 
+                        help='No. of folds for cross-validation')
     args = parser.parse_args()
 
     src = args.dataset
-    slim_data= SlimData(src, args.data_split, args.by_time, args.val_method)
+    slim_data= SlimData(src, args.data_split, args.by_time, args.val_method, args.fold_num)
 
     # genereate top-N list for test user set
     test_user_set = list({ele[0] for ele in slim_data.test})
