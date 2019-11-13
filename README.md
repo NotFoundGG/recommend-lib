@@ -46,7 +46,7 @@
 | SVD++ | SVDppRecommender.py | Factorization meets the neighborhood: a multifaceted collaborative filtering model |
 | WRMF | WRMFRecommender.py | Collaborative Filtering for Implicit Feedback Datasets |
 | BPR-MF | BPRMFRecommender.py | BPR: Bayesian Personalized Ranking from Implicit Feedback |
-| FM | NFMRecommender.py | Probabilistic matrix factorization |
+| FM | NFMRecommender.py | Factorization Machines |
 | NeuFM | NFMRecommender.py | Neural Factorization Machines for Sparse Predictive Analytics |
 | NeuMF | NCFRecommender.py | Neural Collaborative Filtering |
 | Item2Vec |  | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
