@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-11-04 14:52:08
+@LastEditTime: 2019-11-13 15:25:25
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -184,125 +184,158 @@ if __name__ == '__main__':
                         type=int, 
                         default=1, 
                         help='whether split data by time stamp')
+    parser.add_argument('--val_method', 
+                        type=str, 
+                        default='cv', 
+                        help='validation method, options: cv, tfo, loo, tloo')
+    parser.add_argument('--fold_num', 
+                        type=int, 
+                        default=5, 
+                        help='No. of folds for cross-validation')
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     cudnn.benchmark = True
 
     # load data
     src = args.dataset
-    train_data, test_data, user_num, item_num, train_mat, ur = load_mat(src, data_split=args.data_split, by_time=args.by_time)
-    
-    train_dataset = NCFData(train_data, item_num, train_mat, args.num_ng, True)
-    test_dataset = NCFData(test_data, item_num, train_mat, 0, False)
-    train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 
-                                   shuffle=True, num_workers=4)
-    test_loader = data.DataLoader(test_dataset, batch_size=args.test_num_ng + 1, 
-                                  shuffle=False, num_workers=0)
-    
-    # model name 
-    model_name = args.model_name
-    assert model_name in ['MLP', 'GMF', 'NeuMF-end', 'NeuMF-pre']
+    train_data_list, test_data, user_num, \
+    item_num, train_mat_list, ur, val_data_list = load_mat(src, data_split=args.data_split, 
+                                                           by_time=args.by_time, val_method=args.val_method, 
+                                                           fold_num=args.fold_num)
 
-    GMF_model_path = f'./models/{src}/GMF.pt'
-    MLP_model_path = f'./models/{src}/MLP.pt'
-    NeuMF_model_path = f'./models/{src}/NeuMF.pt'
-
-    if model_name == 'NeuMF-pre':
-        assert os.path.exists(GMF_model_path), 'lack of GMF model'    
-        assert os.path.exists(MLP_model_path), 'lack of MLP model'
-        GMF_model = torch.load(GMF_model_path)
-        MLP_model = torch.load(MLP_model_path)
+    if args.val_method in ['tloo', 'loo', 'tfo']:
+        fn = 1
+    elif args.val_method == 'cv':
+        fn = args.fold_num
     else:
-        GMF_model = None
-        MLP_model = None
+        raise ValueError('Invalid val_method value')
 
-    model = NCF(user_num, item_num, args.factor_num, args.num_layers, args.dropout, 
-                model_name, GMF_model, MLP_model)
-
-    if torch.cuda.is_available():
-        model.cuda()
-    else:
-        model.cpu()
-
-    loss_function = nn.BCEWithLogitsLoss()
+    fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
+    for fold in range(fn):
+        print(f'Start train Validation [{fold + 1}]......')
+        train_dataset = NCFData(train_data_list[fold], item_num, train_mat_list[fold], args.num_ng, True)
+        test_dataset = NCFData(test_data, item_num, train_mat_list[fold], 0, False)
+        val_dataset = NCFData(val_data_list[fold], item_num, train_mat_list[fold], 0, False)
+        
+        train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size, 
+                                       shuffle=True, num_workers=4)
+        test_loader = data.DataLoader(test_dataset, batch_size=args.test_num_ng + 1, 
+                                      shuffle=False, num_workers=0)
+        val_loader = data.DataLoader(val_dataset, batch_size=args.test_num_ng + 1, 
+                                      shuffle=False, num_workers=0)
     
-    if model_name == 'NeuMF-pre':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr)
-    else:
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+        # model name 
+        model_name = args.model_name
+        assert model_name in ['MLP', 'GMF', 'NeuMF-end', 'NeuMF-pre']
 
-    count, best_hr = 0, 0
-    for epoch in range(args.epochs):
-        model.train()
-        start_time = time.time()
-        train_loader.dataset.ng_sample()
+        GMF_model_path = f'./models/{src}/GMF.pt.{fold}'
+        MLP_model_path = f'./models/{src}/MLP.pt.{fold}'
+        NeuMF_model_path = f'./models/{src}/NeuMF.pt.{fold}'
 
-        for user, item, label in train_loader:
-            if torch.cuda.is_available():
-                user = user.cuda()
-                item = item.cuda()
-                label = label.float().cuda()
-            else:
-                user = user.cpu()
-                item = item.cpu()
-                label = label.float().cpu()
+        if model_name == 'NeuMF-pre':
+            assert os.path.exists(GMF_model_path), 'lack of GMF model'    
+            assert os.path.exists(MLP_model_path), 'lack of MLP model'
+            GMF_model = torch.load(GMF_model_path)
+            MLP_model = torch.load(MLP_model_path)
+        else:
+            GMF_model = None
+            MLP_model = None
 
-            model.zero_grad()
-            prediction = model(user, item)
-            loss = loss_function(prediction, label)
-            loss.backward()
-            optimizer.step()
-            count += 1
+        model = NCF(user_num, item_num, args.factor_num, args.num_layers, args.dropout, 
+                    model_name, GMF_model, MLP_model)
 
-        model.eval()
-        HR, NDCG = metric_eval(model, test_loader, args.top_k, algo='ncf')
-        elapsed_time = time.time() - start_time
-        print("The time elapse of epoch {:03d}".format(epoch + 1) + ' is: ' + 
-                time.strftime('%H: %M: %S', time.gmtime(elapsed_time)))
-        # print('HR: {:.3f}\tNDCG: {:.3f}'.format(np.mean(HR), np.mean(NDCG)))
+        if torch.cuda.is_available():
+            model.cuda()
+        else:
+            model.cpu()
 
-        if HR > best_hr:
-            best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
-            if args.out:
-                if not os.path.exists(f'./models/{src}'):
-                    os.makedirs(f'./models/{src}')
-                torch.save(model, f'./models/{src}/{model_name.split("-")[0]}.pt')
+        loss_function = nn.BCEWithLogitsLoss()
+    
+        if model_name == 'NeuMF-pre':
+            optimizer = optim.SGD(model.parameters(), lr=args.lr)
+        else:
+            optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
-    print('End. Best epoch {:03d}: HR = {:.3f}'.format(best_epoch, best_hr))
+        count, best_hr = 0, 0
+        for epoch in range(args.epochs):
+            model.train()
+            start_time = time.time()
+            train_loader.dataset.ng_sample()
 
-    # Calculate KPI
-    preds = {}
-    test_u_is = defaultdict(set)
-    for ele in test_data:
-        test_u_is[int(ele[0])].add(int(ele[1]))
+            for user, item, label in train_loader:
+                if torch.cuda.is_available():
+                    user = user.cuda()
+                    item = item.cuda()
+                    label = label.float().cuda()
+                else:
+                    user = user.cpu()
+                    item = item.cpu()
+                    label = label.float().cpu()
 
-    print('Start generate top-K rank list......')
-    for u in tqdm(test_u_is.keys()):
-        test_u_is[u] = list(test_u_is[u])
-        pred_rates = [model(torch.tensor(u), torch.tensor(i)).cpu().detach().numpy()[0] for i in test_u_is[u]]
-        rec_idx = np.argsort(pred_rates)[::-1][:args.top_k]
-        top_n = np.array(test_u_is[u])[rec_idx]
-        preds[u] = list(top_n)
+                model.zero_grad()
+                prediction = model(user, item)
+                loss = loss_function(prediction, label)
+                loss.backward()
+                optimizer.step()
+                count += 1
 
-    for u in preds.keys():
-        preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+            model.eval()
+            HR, NDCG = metric_eval(model, test_loader, args.top_k, algo='ncf')
+            elapsed_time = time.time() - start_time
+            print("The time elapse of epoch {:03d}".format(epoch + 1) + ' is: ' + 
+                    time.strftime('%H: %M: %S', time.gmtime(elapsed_time)))
+            # print('HR: {:.3f}\tNDCG: {:.3f}'.format(np.mean(HR), np.mean(NDCG)))
 
-    # calculate metrics
-    precision_k = np.mean([precision_at_k(r, args.top_k) for r in preds.values()])
-    print(f'Precision@{args.top_k}: {precision_k}')
+            if HR > best_hr:
+                best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
+                if args.out:
+                    if not os.path.exists(f'./models/{src}'):
+                        os.makedirs(f'./models/{src}')
+                    torch.save(model, f'./models/{src}/{model_name.split("-")[0]}.pt.{fold}')
 
-    recall_k = np.mean([recall_at_k(r, len(ur[u]), args.top_k) for u, r in preds.items()])
-    print(f'Recall@{args.top_k}: {recall_k}')
+        print('End. Best epoch {:03d}: HR = {:.3f}'.format(best_epoch, best_hr))
 
-    map_k = map_at_k(list(preds.values()))
-    print(f'MAP@{args.top_k}: {map_k}')
+        # Calculate KPI
+        preds = {}
+        test_u_is = defaultdict(set)
+        for ele in test_data:
+            test_u_is[int(ele[0])].add(int(ele[1]))
 
-    ndcg_k = np.mean([ndcg_at_k(r, args.top_k) for r in preds.values()])
-    print(f'NDCG@{args.top_k}: {ndcg_k}')
+        print('Start generate top-K rank list......')
+        for u in tqdm(test_u_is.keys()):
+            test_u_is[u] = list(test_u_is[u])
+            pred_rates = [model(torch.tensor(u), torch.tensor(i)).cpu().detach().numpy()[0] for i in test_u_is[u]]
+            rec_idx = np.argsort(pred_rates)[::-1][:args.top_k]
+            top_n = np.array(test_u_is[u])[rec_idx]
+            preds[u] = list(top_n)
 
-    hr_k = hr_at_k(list(preds.values()))
-    print(f'HR@{args.top_k}: {hr_k}')
+        for u in preds.keys():
+            preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
 
-    mrr_k = mrr_at_k(list(preds.values()))
-    print(f'MRR@{args.top_k}: {mrr_k}')
+        # calculate metrics
+        precision_k = np.mean([precision_at_k(r, args.top_k) for r in preds.values()])
+        fnl_precision.append(precision_k)
+
+        recall_k = np.mean([recall_at_k(r, len(ur[u]), args.top_k) for u, r in preds.items()])
+        fnl_recall.append(recall_k)
+
+        map_k = map_at_k(list(preds.values()))
+        fnl_map.append(map_k)
+
+        ndcg_k = np.mean([ndcg_at_k(r, args.top_k) for r in preds.values()])
+        fnl_ndcg.append(ndcg_k)
+
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        fnl_hr.append(hr_k)
+
+        mrr_k = mrr_at_k(list(preds.values()))
+        fnl_mrr.append(mrr_k)
+
+    print('---------------------------------')
+    print(f'Precision@{args.top_k}: {np.mean(fnl_precision)}')
+    print(f'Recall@{args.top_k}: {np.mean(fnl_recall)}')
+    print(f'MAP@{args.top_k}: {np.mean(fnl_map)}')
+    print(f'NDCG@{args.top_k}: {np.mean(fnl_ndcg)}')
+    print(f'HR@{args.top_k}: {np.mean(fnl_hr)}')
+    print(f'MRR@{args.top_k}: {np.mean(fnl_mrr)}')
     

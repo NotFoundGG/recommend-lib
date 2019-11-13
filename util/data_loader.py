@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-13 10:25:28
+@LastEditTime: 2019-11-13 15:07:32
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -271,31 +271,10 @@ def load_rate(src='ml-100k'):
                         names=['user', 'item', 'rating', 'timestamp'], engine='python')
         df.sort_values(['user', 'item', 'timestamp'], inplace=True)
     elif src == 'netflix':
-        # df = pd.DataFrame()
-        # for i in range(1, 5):
-        #     tmp = pd.read_csv(f'./data/netflix/combined_data_{i}.txt', header=None, names = ['user', 'rating'], usecols=[0, 1])
-        #     tmp['rating'] = tmp.rating.astype(float)
-        #     df = pd.concat([df, tmp], ignore_index=True)
-        #     del tmp
-        #     gc.collect()
-        # df_nan = pd.DataFrame(pd.isna(df.rating))
-        # df_nan = df_nan[df_nan['rating']==True]
-        # df_nan = df_nan.reset_index()
-        # movie_np = []
-        # movie_id = 1
-        # for i, j in zip(df_nan['index'][1:], df_nan['index'][:-1]):
-        #     temp = np.full((1, i-j-1), movie_id)
-        #     movie_np = np.append(movie_np, temp)
-        #     movie_id += 1
-        # last_record = np.full((1, len(df) - df_nan.iloc[-1, 0] - 1),movie_id)
-        # movie_np = np.append(movie_np, last_record)
-
-        # df = df[pd.notnull(df['rating'])]
-        # df['item'] = movie_np.astype(int)
-        # df['user'] = df['user'].astype(int)
         pass
 
-
+    else:
+        raise ValueError('Invalid Dataset Error')
     return df
 
 # NeuFM/FM prepare
@@ -551,7 +530,7 @@ def _negative_sampling(ratings):
     return interact_status[['user', 'negative_samples']]
     
 
-def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1):
+def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_method='cv', fold_num=5):
     df = load_rate(src)
     # df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
     df['user'] = pd.Categorical(df.user).codes
@@ -564,56 +543,62 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1):
         negatives = _negative_sampling(df)
         train, test = _split_loo(df, by_time)
 
-        file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
-        for _, row in train.iterrows():
-            ln = '\t'.join(map(str, row.values)) + '\n'
-            file_obj.write(ln)
-        file_obj.close()
+        # file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
+        # for _, row in train.iterrows():
+        #     ln = '\t'.join(map(str, row.values)) + '\n'
+        #     file_obj.write(ln)
+        # file_obj.close()
 
-        file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
-        for _, row in test.iterrows():
-            ln = '\t'.join(map(str, row.values)) + '\n'
-            file_obj.write(ln)
-        file_obj.close()
+        # file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
+        # for _, row in test.iterrows():
+        #     ln = '\t'.join(map(str, row.values)) + '\n'
+        #     file_obj.write(ln)
+        # file_obj.close()
 
         negs = test.merge(negatives, on=['user'], how='left')
         negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
         negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
 
-        file_obj = open(f'./data/{src}/{src}.test.negative', 'w')
-        for _, row in negs.iterrows():
-            ln = row['user'] + '\t' + '\t'.join(map(str, row['negative_samples'])) + '\n'
-            file_obj.write(ln)
-        file_obj.close()
+        # file_obj = open(f'./data/{src}/{src}.test.negative', 'w')
+        # for _, row in negs.iterrows():
+        #     ln = row['user'] + '\t' + '\t'.join(map(str, row['negative_samples'])) + '\n'
+        #     file_obj.write(ln)
+        # file_obj.close()
         
         test_data = []
         ur = defaultdict(set)
-        with open(f'./data/{src}/{src}.test.negative', 'r') as fd:
-            line = fd.readline()
-            while line is not None and line != '':
-                arr = line.split('\t')
-                u = eval(arr[0])[0]
-                test_data.append([u, eval(arr[0])[1]])
-                ur[u].add(int(eval(arr[0])[1]))
-                for i in arr[1:]:
-                    test_data.append([u, int(i)])
-                line = fd.readline()
+        # with open(f'./data/{src}/{src}.test.negative', 'r') as fd:
+        #     line = fd.readline()
+        #     while line is not None and line != '':
+        #         arr = line.split('\t')
+        #         u = eval(arr[0])[0]
+        #         test_data.append([u, eval(arr[0])[1]])
+        #         ur[u].add(int(eval(arr[0])[1]))
+        #         for i in arr[1:]:
+        #             test_data.append([u, int(i)])
+        #         line = fd.readline()
+        for _, row in negs.iterrows():
+            u = eval(row['user'])[0]
+            test_data.append([u, eval(row['user'])[1]])
+            ur[u].add(int(row['user'][1]))
+            for i in row['negative_samples']:
+                test_data.append([u, int(i)])
 
     elif data_split == 'fo':
         negatives = _negative_sampling(df)
         train, test = _split_fo(df, by_time)
 
-        file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
-        for _, row in train.iterrows():
-            ln = '\t'.join(map(str, row.values)) + '\n'
-            file_obj.write(ln)
-        file_obj.close()
+        # file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
+        # for _, row in train.iterrows():
+        #     ln = '\t'.join(map(str, row.values)) + '\n'
+        #     file_obj.write(ln)
+        # file_obj.close()
 
-        file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
-        for _, row in test.iterrows():
-            ln = '\t'.join(map(str, row.values)) + '\n'
-            file_obj.write(ln)
-        file_obj.close()
+        # file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
+        # for _, row in test.iterrows():
+        #     ln = '\t'.join(map(str, row.values)) + '\n'
+        #     file_obj.write(ln)
+        # file_obj.close()
 
         test_data = []
         ur = defaultdict(set) # ground_truth
@@ -633,18 +618,62 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1):
     else:
         raise ValueError('Invalid data_split value, expect: loo, fo')
 
-    train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
-                            names=['user', 'item'], usecols=[0, 1], 
-                            dtype={0: np.int32, 1: np.int32}, engine='python')
+    # train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
+    #                          names=['user', 'item'], usecols=[0, 1], 
+    #                          dtype={0: np.int32, 1: np.int32}, engine='python')
+    train_data_list, val_data_list = [], []
+    if val_method == 'cv':
+        train_data = train[['user', 'item']].reset_index(drop=True)
+        train_data = train_data.values
+        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
+        for train_index, val_index in kf.split(train_data):
+            train_data_list.append(train_data[train_index].tolist())
+            val_data_list.append(train_data[val_index].tolist())
+    elif val_method == 'tloo':
+        train_data = train[['user', 'item', 'timestamp']].reset_index(drop=True)
+        train_data = train_data.sample(frac=1)
+        train_data = train_data.sort_values(['timestamp']).reset_index(drop=True)
 
-    train_data = train_data.values.tolist()
-    # load ratings as a dok matrix
-    train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
-    for x in train_data:
-        train_mat[x[0], x[1]] = 1.0
+        train_data['rank_latest'] = train_data.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        sub_train = train_data[train_data['rank_latest'] > 1].copy()
+        sub_val = train_data[train_data['rank_latest'] == 1].copy()
+        sub_val.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
+        sub_train.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
+
+        train_data_list.append(sub_train)
+        val_data_list.append(sub_val)
+    elif val_method == 'loo':
+        sub_val = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        sub_val = sub_val[['user', 'item']].copy()
+        sub_train = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(sub_val)).reset_index().copy()
+        sub_train = sub_train[['user', 'item']].copy()
+
+        train_data_list.append(sub_train)
+        val_data_list.append(sub_val)
+    elif val_method == 'tfo':
+        train_data = train[['user', 'item', 'timestamp']].reset_index(drop=True)
+        train_data = train_data.sample(frac=1)
+        train_data = train_data.sort_values(['timestamp']).reset_index(drop=True)
+
+        split_idx = int(np.ceil(len(train_data) * 0.9))
+        train_data.drop(['timestamp'], axis=1, inplace=True)
+        sub_train, sub_val = train_data.iloc[:split_idx, :].copy(), train_data.iloc[split_idx:, :].copy()
+
+        train_data_list.append(sub_train.values.tolist())
+        val_data_list.append(sub_val.values.tolist())
+    else:
+        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
+    train_mat_list = []
+    for fold in range(len(train_data_list)):
+        # load ratings as a dok matrix
+        train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
+        for x in train_data_list[fold]:
+            train_mat[x[0], x[1]] = 1.0
+
+        train_mat_list.append(train_mat)
     print('Finish build train and test set......')
     
-    return train_data, test_data, user_num, item_num, train_mat, ur
+    return train_data_list, test_data, user_num, item_num, train_mat_list, ur, val_data_list
 
 class NCFData(data.Dataset):
     def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
