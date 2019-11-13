@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 14:48:01
+@LastEditTime: 2019-11-13 12:42:17
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -245,6 +245,14 @@ if __name__ == '__main__':
                         type=int, 
                         default=0, 
                         help='whether split data by time stamp')
+    parser.add_argument('--val_method', 
+                        type=str, 
+                        default='cv', 
+                        help='validation method, options: cv, tfo, loo, tloo')
+    parser.add_argument('--fold_num', 
+                        type=int, 
+                        default=5, 
+                        help='No. of folds for cross-validation')
     args = parser.parse_args()
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -254,180 +262,197 @@ if __name__ == '__main__':
 
     ### prepare dataset ###
     src = args.dataset
-    feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, ground_truth = load_libfm(src)
+    feat_idx_dict, user_tag_info, item_tag_info,  \
+    test_user_set, test_item_set, ground_truth = load_libfm(src, data_split=args.data_split, by_time=args.by_time, 
+                                                            val_method=args.val_method, fold_num=args.fold_num)
     features_map, num_features = map_features(src)
 
-    train_dataset = FMData(f'./data/{src}/{src}.train.libfm', features_map)
-    valid_dataset = FMData(f'./data/{src}/{src}.valid.libfm', features_map)
+    if args.val_method in ['tloo', 'loo', 'tfo']:
+        fn = 1
+    else:
+        fn = args.fold_num
+
+    fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
     test_dataset = FMData(f'./data/{src}/{src}.test.libfm', features_map)
-
-    train_loader = data.DataLoader(train_dataset, drop_last=True, batch_size=args.batch_size, 
-                                   shuffle=True, num_workers=4)
-    valid_loader = data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
     test_loader = data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
-
-    ### create model ###
-    model_path = './models/'
-    assert args.model in ['FM', 'NFM'], 'invalid model type'
-
-    opt = args.opt
-    assert opt in ['Adagrad', 'Adam', 'SGD', 'Momentum']
-
-    activation_function = args.act_func
-    assert activation_function in ['relu', 'sigmoid', 'tanh', 'identity']
-
-    assert args.crit in ['square_loss', 'log_loss']
-
-    if args.pre_train:
-        assert os.path.exists(model_path + 'FM.pt'), 'lack of FM model'
-        assert args.model == 'NFM', 'only support NFM for now'
-        FM_model = torch.load(model_path + 'FM.pt')
-    else:
-        FM_model = None
-
-    if args.model == 'FM':
-        model = FM(num_features, args.hidden_factor, args.batch_norm, eval(args.dropout))
-    else:
-        model = NFM(num_features, args.hidden_factor, activation_function, eval(args.layers), 
-                    args.batch_norm, eval(args.dropout), FM_model)
-    
-    # model.cuda()
-    if torch.cuda.is_available():
-        model.cuda()
-    model.cpu()
-    # model.to(device)
-
-    if opt == 'Adagrad':
-            optimizer = optim.Adagrad(
-            model.parameters(), lr=args.lr, initial_accumulator_value=1e-8)
-    elif opt == 'Adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    elif opt == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr)
-    elif opt == 'Momentum':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.95)
-
-    if args.crit == 'square_loss':
-        criterion = nn.MSELoss(reduction='sum')
-    else:
-        criterion = nn.BCEWithLogitsLoss(reduction='sum')
-
-    count, best_rmse = 0, 100
-    for epoch in range(args.epochs):
-        model.train() # Enable dropout and batch_norm
-        start_time = time.time()
-        
-        for features, feature_values, label in train_loader:
-            if torch.cuda.is_available():
-                features = features.cuda()
-                feature_values = feature_values.cuda()
-                label = label.cuda()
-            else:
-                features = features.cpu()
-                feature_values = feature_values.cpu()
-                label = label.cpu()
-
-            model.zero_grad()
-            prediction = model(features, feature_values)
-            loss = criterion(prediction, label)
-            loss += args.lamda * model.embeddings.weight.norm()
-            loss.backward()
-            optimizer.step()
-
-            count += 1
-
-        model.eval()
-        train_result = metrics_nfm(model, train_loader)
-        valid_result = metrics_nfm(model, valid_loader)
-        test_result = metrics_nfm(model, test_loader)
-
-        print('Runing Epoch {:03d} costs '.format(epoch) + time.strftime('%H: %M: %S', 
-                                                                         time.gmtime(time.time() - start_time)))
-        print('Train_RMSE: {:.3f}, Valid_RMSE: {:.3f}, Test_RMSE: {:.3f}'.format(train_result, 
-                                                                                 valid_result, 
-                                                                                 test_result))
-        if test_result < best_rmse:
-            best_rmse, best_epoch = test_result, epoch
-            if args.out:
-                if not os.path.exists(model_path):
-                    os.mkdir(model_path)
-                torch.save(model, f'{model_path}{src}/{args.model}.pt')
-    print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
-
 
     # predict test set and calculate KPI
     top_k = args.top_k
-    # top_k = 10
-    test_u_is = defaultdict(set)
-    for key, val in ground_truth.items():
-        test_u_is[key] = set(val)
-
     max_i_num = 100
+    for fold in range(fn):
+        print(f'Start train validation [{fold + 1}]......')
+        train_dataset = FMData(f'./data/{src}/{src}.train.libfm.{fold}', features_map)
+        valid_dataset = FMData(f'./data/{src}/{src}.valid.libfm.{fold}', features_map)
 
-    preds = {}
-    tmp_file_name = f'./tmp.test.libfm'
-    for u in test_user_set:
-        if len(test_u_is[u]) < max_i_num:
-        # construct candidates set
-            actual_i_list = ground_truth[u]
-            cands_num = max_i_num - len(actual_i_list)
-            cands = random.sample(test_item_set, cands_num)
-            test_u_is[u] = test_u_is[u] | set(cands)
+        train_loader = data.DataLoader(train_dataset, drop_last=True, batch_size=args.batch_size, 
+                                       shuffle=True, num_workers=4)
+        valid_loader = data.DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
+
+        ### create model ###
+        model_path = './models/'
+        assert args.model in ['FM', 'NFM'], 'invalid model type'
+
+        opt = args.opt
+        assert opt in ['Adagrad', 'Adam', 'SGD', 'Momentum']
+
+        activation_function = args.act_func
+        assert activation_function in ['relu', 'sigmoid', 'tanh', 'identity']
+
+        assert args.crit in ['square_loss', 'log_loss']
+
+        if args.pre_train:
+            assert os.path.exists(model_path + f'FM.pt.{fold}'), 'lack of FM model'
+            assert args.model == 'NFM', 'only support NFM for now'
+            FM_model = torch.load(model_path + f'FM.pt.{fold}')
         else:
-            test_u_is[u] = set(random.sample(test_u_is[u], max_i_num))
-        candidates = list(test_u_is[u])
-        df = pd.DataFrame({'user': [u for _ in test_u_is[u]], 'item': list(test_u_is[u])})
-        df = df.merge(user_tag_info, on='user', how='left').merge(item_tag_info, on='item', how='left')
+            FM_model = None
 
-        file_obj = open(tmp_file_name, 'w')
-        for idx, row in df.iterrows():
-            l = ''
-            for col in feat_idx_dict.keys():
-                if col != 'rating':
-                    l += ' '
-                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
-            l = str(0) + l + '\n'
-            file_obj.write(l)
-        file_obj.close()
+        if args.model == 'FM':
+            model = FM(num_features, args.hidden_factor, args.batch_norm, eval(args.dropout))
+        else:
+            model = NFM(num_features, args.hidden_factor, activation_function, eval(args.layers), 
+                        args.batch_norm, eval(args.dropout), FM_model)
 
-        test_dataset = FMData(tmp_file_name, features_map)
-        test_loader = data.DataLoader(test_dataset, batch_size=max_i_num, shuffle=False, num_workers=0)
+        # model.cuda()
+        if torch.cuda.is_available():
+            model.cuda()
+        model.cpu()
+        # model.to(device)
 
-        for features, feature_values, _ in test_loader:
-            if torch.cuda.is_available():
-                features = features.cuda()
-                feature_values = feature_values.cuda()
+        if opt == 'Adagrad':
+                optimizer = optim.Adagrad(
+                model.parameters(), lr=args.lr, initial_accumulator_value=1e-8)
+        elif opt == 'Adam':
+            optimizer = optim.Adam(model.parameters(), lr=args.lr)
+        elif opt == 'SGD':
+            optimizer = optim.SGD(model.parameters(), lr=args.lr)
+        elif opt == 'Momentum':
+            optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.95)
+
+        if args.crit == 'square_loss':
+            criterion = nn.MSELoss(reduction='sum')
+        else:
+            criterion = nn.BCEWithLogitsLoss(reduction='sum')
+
+        count, best_rmse = 0, 100
+        for epoch in range(args.epochs):
+            model.train() # Enable dropout and batch_norm
+            start_time = time.time()
+            
+            for features, feature_values, label in train_loader:
+                if torch.cuda.is_available():
+                    features = features.cuda()
+                    feature_values = feature_values.cuda()
+                    label = label.cuda()
+                else:
+                    features = features.cpu()
+                    feature_values = feature_values.cpu()
+                    label = label.cpu()
+
+                model.zero_grad()
+                prediction = model(features, feature_values)
+                loss = criterion(prediction, label)
+                loss += args.lamda * model.embeddings.weight.norm()
+                loss.backward()
+                optimizer.step()
+
+                count += 1
+
+            model.eval()
+            train_result = metrics_nfm(model, train_loader)
+            valid_result = metrics_nfm(model, valid_loader)
+            test_result = metrics_nfm(model, test_loader)
+
+            print('Runing Epoch {:03d} costs '.format(epoch) + time.strftime('%H: %M: %S', 
+                                                                             time.gmtime(time.time() - start_time)))
+            print('Train_RMSE: {:.3f}, Valid_RMSE: {:.3f}, Test_RMSE: {:.3f}'.format(train_result, 
+                                                                                     valid_result, 
+                                                                                     test_result))
+            if test_result < best_rmse:
+                best_rmse, best_epoch = test_result, epoch
+                if args.out:
+                    if not os.path.exists(model_path):
+                        os.mkdir(model_path)
+                    torch.save(model, f'{model_path}{src}/{args.model}.pt.{fold}')
+        print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
+
+        test_u_is = defaultdict(set)
+        for key, val in ground_truth.items():
+            test_u_is[key] = set(val)
+
+        preds = {}
+        tmp_file_name = f'./tmp.test.libfm'
+        for u in test_user_set:
+            if len(test_u_is[u]) < max_i_num:
+            # construct candidates set
+                actual_i_list = ground_truth[u]
+                cands_num = max_i_num - len(actual_i_list)
+                cands = random.sample(test_item_set, cands_num)
+                test_u_is[u] = test_u_is[u] | set(cands)
             else:
-                features = features.cpu()
-                feature_values = feature_values.cpu()
+                test_u_is[u] = set(random.sample(test_u_is[u], max_i_num))
+            candidates = list(test_u_is[u])
+            df = pd.DataFrame({'user': [u for _ in test_u_is[u]], 'item': list(test_u_is[u])})
+            df = df.merge(user_tag_info, on='user', how='left').merge(item_tag_info, on='item', how='left')
 
-            prediction = model(features, feature_values)
-            prediction = prediction.clamp(min=-1.0, max=1.0)
+            file_obj = open(tmp_file_name, 'w')
+            for idx, row in df.iterrows():
+                l = ''
+                for col in feat_idx_dict.keys():
+                    if col != 'rating':
+                        l += ' '
+                        l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+                l = str(0) + l + '\n'
+                file_obj.write(l)
+            file_obj.close()
 
-            _, indices = torch.topk(prediction, 10)
-            recommends = torch.take(torch.tensor(candidates), indices).cpu().numpy().tolist()
+            test_dataset = FMData(tmp_file_name, features_map)
+            test_loader = data.DataLoader(test_dataset, batch_size=max_i_num, shuffle=False, num_workers=0)
 
-        preds[u] = recommends
-        preds[u] = [1 if e in ground_truth[u] else 0 for e in preds[u]]
-    
-    
-    # calculate metrics
-    precision_k = np.mean([precision_at_k(r, top_k) for r in preds.values()])
-    print(f'Precision@{top_k}: {precision_k}')
+            for features, feature_values, _ in test_loader:
+                if torch.cuda.is_available():
+                    features = features.cuda()
+                    feature_values = feature_values.cuda()
+                else:
+                    features = features.cpu()
+                    feature_values = feature_values.cpu()
 
-    recall_k = np.mean([recall_at_k(r, len(ground_truth[u]), top_k) for u, r in preds.items()])
-    print(f'Recall@{top_k}: {recall_k}')
+                prediction = model(features, feature_values)
+                prediction = prediction.clamp(min=-1.0, max=1.0)
 
-    map_k = map_at_k(list(preds.values()))
-    print(f'MAP@{top_k}: {map_k}')
+                _, indices = torch.topk(prediction, top_k)
+                recommends = torch.take(torch.tensor(candidates), indices).cpu().numpy().tolist()
 
-    ndcg_k = np.mean([ndcg_at_k(r, top_k) for r in preds.values()])
-    print(f'NDCG@{top_k}: {ndcg_k}')
+            preds[u] = recommends
+            preds[u] = [1 if e in ground_truth[u] else 0 for e in preds[u]]
+        
+        
+        # calculate metrics
+        precision_k = np.mean([precision_at_k(r, top_k) for r in preds.values()])
+        fnl_precision.append(precision_k)
 
-    hr_k = hr_at_k(list(preds.values()))
-    print(f'HR@{top_k}: {hr_k}')
+        recall_k = np.mean([recall_at_k(r, len(ground_truth[u]), top_k) for u, r in preds.items()])
+        fnl_recall.append(recall_k)
 
+        map_k = map_at_k(list(preds.values()))
+        fnl_map.append(map_k)
 
+        ndcg_k = np.mean([ndcg_at_k(r, top_k) for r in preds.values()])
+        fnl_ndcg.append(ndcg_k)
 
-    if os.path.exists(tmp_file_name):
-        os.remove(tmp_file_name)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ground_truth)
+        fnl_hr.append(hr_k)
+
+        mrr_k = mrr_at_k(list(preds.values()))
+        fnl_mrr.append(mrr_k)
+
+        if os.path.exists(tmp_file_name):
+            os.remove(tmp_file_name)
+
+    print('---------------------------------')
+    print(f'Precision@{args.top_k}: {np.mean(fnl_precision)}')
+    print(f'Recall@{args.top_k}: {np.mean(fnl_recall)}')
+    print(f'MAP@{args.top_k}: {np.mean(fnl_map)}')
+    print(f'NDCG@{args.top_k}: {np.mean(fnl_ndcg)}')
+    print(f'HR@{args.top_k}: {np.mean(fnl_hr)}')
+    print(f'MRR@{args.top_k}: {np.mean(fnl_mrr)}')

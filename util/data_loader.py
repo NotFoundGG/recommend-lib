@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 15:00:09
+@LastEditTime: 2019-11-13 10:25:28
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -94,7 +94,7 @@ class SlimData(object):
                 train_list.append(train_df.iloc[train_index, :])
                 val_list.append(train_df.iloc[val_index, :])
         else:
-            raise ValueError('Invalid data_split value, expect: loo, fo')
+            raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
         
         return train_list, val_list
 
@@ -299,7 +299,7 @@ def load_rate(src='ml-100k'):
     return df
 
 # NeuFM/FM prepare
-def load_libfm(src='ml-100k', data_split='fo', by_time=0):
+def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5):
     df = load_rate(src)
 
     if src == 'ml-100k':
@@ -323,7 +323,7 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0):
         df['item'] = pd.Categorical(df.item).codes
         # df['gender'] = pd.Categorical(df.gender).codes
         # df['occupation'] = pd.Categorical(df.occupation).codes
-        df = df[[col for col in df.columns if col not in ML100K_NUMERIC_COLS]].copy()
+        # df = df[[col for col in df.columns if col not in ML100K_NUMERIC_COLS]].copy()
 
         # user_tag_info = df[['user', 'gender', 'occupation']].copy()
         # item_tag_info = df[['item', 'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy', 
@@ -334,7 +334,7 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0):
         user_tag_info = user_tag_info.drop_duplicates()
         item_tag_info = item_tag_info.drop_duplicates()
 
-    feat_idx_dict = {} # 存储各个category特征的起始索引位置
+    feat_idx_dict = {} # store the start index of each category
     idx = 0
     for col in df.columns:
         if col not in ['rating', 'timestamp']:
@@ -346,67 +346,105 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0):
         if by_time:
             df = df.sample(frac=1)
             df = df.sort_values(['timestamp']).reset_index(drop=True)
-            del df['timestamp']
             
             split_idx = int(np.ceil(len(df) * 0.8)) # for train test
             train, test = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
-            split_idx = int(np.ceil(len(train) * 0.9)) # for train valid
-            train, valid = train.iloc[:split_idx, :].copy(), train.iloc[split_idx:, :].copy()
         else:
-            del df['timestamp']
             train, test = train_test_split(df, test_size=0.2)
-            train, valid = train_test_split(train, test_size=0.1)
     elif data_split == 'loo':
         if by_time:
             df = df.sample(frac=1)
             df = df.sort_values(['timestamp']).reset_index(drop=True)
             df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
             train, test = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
-            train.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
-            test.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
-            split_idx = int(np.ceil(len(train) * 0.9)) # for train valid
-            train = train.reset_index(drop=True)
-            train, valid = train.iloc[:split_idx, :].copy(), train.iloc[split_idx:, :].copy()
+            train.drop(['rank_latest'], axis=1, inplace=True)
+            test.drop(['rank_latest'], axis=1, inplace=True)
         else:
-            del df['timestamp']
             test = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
             test_key = test[['user', 'item']].copy()
             train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
-            train, valid = train_test_split(train, test_size=0.1)
     else:
         raise ValueError('Invalid data_split value, expect: loo, fo')
+
+    test = test.reset_index(drop=True)
+    test.drop(['timestamp'], axis=1, inplace=True)
+
+    train_list, val_list = [], []
+    if val_method == 'cv':
+        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
+        for train_index, val_index in kf.split(train):
+            train_set, val_set = train.iloc[train_index, :].copy(), train.iloc[val_index, :].copy()
+            del train_set['timestamp'], val_set['timestamp']
+
+            train_list.append(train_set)
+            val_list.append(val_set)
+    elif val_method == 'loo':
+        val_set = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        val_key = val_set[['user', 'item']].copy()
+        train_set = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy()
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    elif val_method == 'tloo':
+        train = train.sample(frac=1)
+        train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+        train['rank_latest'] = train.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        train_set = train[train['rank_latest'] > 1].copy()
+        val_set = train[train['rank_latest'] == 1].copy()
+        del train_set['rank_latest'], val_set['rank_latest']
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    elif val_method == 'tfo':
+        train = train.sample(frac=1)
+        train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+        split_idx = int(np.ceil(len(train) * 0.9))
+        train_set, val_set = train.iloc[:split_idx, :].copy(), train_set.iloc[split_idx:, :].copy()
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    else:
+        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
+
     test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
     ui = test[['user', 'item']].copy()
     u_is = defaultdict(list)
     for u in test_user_set:
         u_is[u] = ui.loc[ui.user==u, 'item'].values.tolist()
 
-    file_obj = open(f'./data/{src}/{src}.train.libfm', 'w')
-    for idx, row in train.iterrows():
-        l = ''
-        for col in df.columns:
-            if col != 'rating':
-                l += ' '
-                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
-        l = str(row['rating']) + l + '\n'
-        file_obj.write(l)
-    file_obj.close()
+    gc.collect()
+    for fold in range(len(train_list)):
+        file_obj = open(f'./data/{src}/{src}.train.libfm.{fold}', 'w')
+        for idx, row in train_list[fold].iterrows():
+            l = ''
+            for col in train_list[fold].columns:
+                if col != 'rating':
+                    l += ' '
+                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+            l = str(row['rating']) + l + '\n'
+            file_obj.write(l)
+        file_obj.close()
+
+        file_obj = open(f'./data/{src}/{src}.valid.libfm.{fold}', 'w')
+        for idx, row in val_list[fold].iterrows():
+            l = ''
+            for col in val_list[fold].columns:
+                if col != 'rating':
+                    l += ' '
+                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+            l = str(row['rating']) + l + '\n'
+            file_obj.write(l)
+        file_obj.close()
 
     file_obj = open(f'./data/{src}/{src}.test.libfm', 'w')
     for idx, row in test.iterrows():
         l = ''
-        for col in df.columns:
-            if col != 'rating':
-                l += ' '
-                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
-        l = str(row['rating']) + l + '\n'
-        file_obj.write(l)
-    file_obj.close()
-
-    file_obj = open(f'./data/{src}/{src}.valid.libfm', 'w')
-    for idx, row in valid.iterrows():
-        l = ''
-        for col in df.columns:
+        for col in test.columns:
             if col != 'rating':
                 l += ' '
                 l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
@@ -433,8 +471,8 @@ def read_features(file, features):
 
 def map_features(src='ml-100k'):
     features = {}
-    features = read_features(f'./data/{src}/{src}.train.libfm', features)
-    features = read_features(f'./data/{src}/{src}.valid.libfm', features)
+    features = read_features(f'./data/{src}/{src}.train.libfm.0', features)
+    features = read_features(f'./data/{src}/{src}.valid.libfm.0', features)
     features = read_features(f'./data/{src}/{src}.test.libfm', features)
     print(f'number of features: {len(features)}')
 
