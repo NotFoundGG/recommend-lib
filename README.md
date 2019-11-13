@@ -41,14 +41,14 @@
 | Item-KNN | ItemKNNRecommender.py | - |
 | User-KNN | UserKNNRecommender.py | - |
 | SLiM | SLiMRecommender.py | SLIM: Sparse Linear Methods for Top-N Recommender Systems |
-| MF | MFRecommender.py | |
+| MF | MFRecommender.py | Probabilistic matrix factorization |
 | PureSVD | PureSVDRecommender.py | Performance of recommender algorithms on top-N recommendation tasks |
-| SVD++ | SVDppRecommender.py | |
-| WRMF | WRMFRecommender.py |  |
-| BPR-MF | BPRMFRecommender.py |  |
-| FM | NFMRecommender.py |  |
-| NeuFM | NFMRecommender.py |  |
-| NeuMF | NCFRecommender.py |  |
+| SVD++ | SVDppRecommender.py | Factorization meets the neighborhood: a multifaceted collaborative filtering model |
+| WRMF | WRMFRecommender.py | Collaborative Filtering for Implicit Feedback Datasets |
+| BPR-MF | BPRMFRecommender.py | BPR: Bayesian Personalized Ranking from Implicit Feedback |
+| FM | NFMRecommender.py | Probabilistic matrix factorization |
+| NeuFM | NFMRecommender.py | Neural Factorization Machines for Sparse Predictive Analytics |
+| NeuMF | NCFRecommender.py | Neural Collaborative Filtering |
 | Item2Vec |  | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
 | AutoRec |  | AutoRec: Autoencoders Meet Collaborative Filtering |
 <!-- | eALS |  | https://arxiv.org/pdf/1708.05024.pdf | -->
