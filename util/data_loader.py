@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:57:53
+@LastEditTime: 2019-11-14 13:39:16
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -22,21 +22,45 @@ from scipy.io import mmread
 
 from sklearn.model_selection import train_test_split, KFold
 
-ML100K_NUMERIC_COLS = ['age']
-IGNORE_COLS = ['user', 'item']
-TARGET_COLS = ['rating']
-
 ########################################################################################################
 def load_rate(src='ml-100k', prepro='origin'):
     if src == 'ml-100k':
         df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
                         names=['user', 'item', 'rating', 'timestamp'], engine='python')
-        df.sort_values(['user', 'item', 'timestamp'], inplace=True)
+    elif src == 'ml-1m':
+        pass
+    elif src == 'ml-10m':
+        pass
+    elif src == 'ml-20m':
+        pass
     elif src == 'netflix':
         pass
-
+    elif src == 'lastfm':
+        pass
+    elif src == 'bx':
+        pass
+    elif src == 'pinterest':
+        pass
+    elif src == 'amazon-cloth':
+        df = pd.read_csv(f'./data/{src}/ratings_Clothing_Shoes_and_Jewelry.csv', 
+                         names=['user', 'item', 'rating', 'timestamp'])
+    elif src == 'amazon-elec':
+        pass
+    elif src == 'amazon-book':
+        pass
+    elif src == 'amazon-music':
+        df = pd.read_csv(f'./data/{src}/ratings_Digital_Music.csv', 
+                         names=['user', 'item', 'rating', 'timestamp'])
+    elif src == 'epinions':
+        pass
+    elif src == 'yelp':
+        pass
+    elif src == 'citeulike':
+        pass
     else:
         raise ValueError('Invalid Dataset Error')
+
+    df.sort_values(['user', 'item', 'timestamp'], inplace=True)
 
     if prepro == 'origin':
         return df
@@ -270,15 +294,6 @@ class WRMFData(object):
                 item_index = [i for i in samples.item]
 
                 self.val_df = val_df.reset_index(drop=True)
-                # nonzero_index = training_set.nonzero()
-                # nonzero_pairs = list(zip(nonzero_index[0], nonzero_index[1]))
-                # random.seed(0)
-                # # Round the number of samples needed to the nearest integer
-                # num_samples = int(np.ceil(pct_test * len(nonzero_pairs)))
-                # # remove num_samples values from nonzero_pairs
-                # samples = random.sample(nonzero_pairs, num_samples)
-                # user_index = [index[0] for index in samples]
-                # item_index = [index[1] for index in samples]
         elif self.data_split == 'loo':
             if self.by_time:
                 self.df = self.df.sample(frac=1)
@@ -310,32 +325,11 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_
     df = load_rate(src, prepro)
 
     if src == 'ml-100k':
-        # user_info = pd.read_csv(f'./data/{src}/u.user', sep='|', header=None, engine='python', 
-        #                         names=['user', 'age', 'gender', 'occupation', 'zip_code'])
-        # item_info = pd.read_csv(f'./data/{src}/u.item', sep='|', header=None, engine='python',
-        #                         names=['item', 'movie_title', 'release_date', 'video_release_date', 
-        #                             'IMDb_URL', 'unknown', 'Action', 'Adventure', 'Animation', 
-        #                             'Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 
-        #                             'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi',
-        #                             'Thriller', 'War', 'Western'])
-
-        # df = df.merge(user_info, on='user', how='left').merge(item_info, on='item', how='left')
-        # df.drop(['IMDb_URL', 'video_release_date', 'movie_title', 
-        #             'zip_code', 'release_date'], axis=1, inplace=True)
-
         # rating >=4 interaction =1
         df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
 
         df['user'] = pd.Categorical(df.user).codes
         df['item'] = pd.Categorical(df.item).codes
-        # df['gender'] = pd.Categorical(df.gender).codes
-        # df['occupation'] = pd.Categorical(df.occupation).codes
-        # df = df[[col for col in df.columns if col not in ML100K_NUMERIC_COLS]].copy()
-
-        # user_tag_info = df[['user', 'gender', 'occupation']].copy()
-        # item_tag_info = df[['item', 'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy', 
-        #                     'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 
-        #                     'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']].copy()
         user_tag_info = df[['user']].copy()
         item_tag_info = df[['item']].copy()
         user_tag_info = user_tag_info.drop_duplicates()
@@ -571,40 +565,13 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_metho
         negatives = _negative_sampling(df)
         train, test = _split_loo(df, by_time)
 
-        # file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
-        # for _, row in train.iterrows():
-        #     ln = '\t'.join(map(str, row.values)) + '\n'
-        #     file_obj.write(ln)
-        # file_obj.close()
-
-        # file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
-        # for _, row in test.iterrows():
-        #     ln = '\t'.join(map(str, row.values)) + '\n'
-        #     file_obj.write(ln)
-        # file_obj.close()
-
         negs = test.merge(negatives, on=['user'], how='left')
         negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
         negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
-
-        # file_obj = open(f'./data/{src}/{src}.test.negative', 'w')
-        # for _, row in negs.iterrows():
-        #     ln = row['user'] + '\t' + '\t'.join(map(str, row['negative_samples'])) + '\n'
-        #     file_obj.write(ln)
-        # file_obj.close()
         
         test_data = []
         ur = defaultdict(set)
-        # with open(f'./data/{src}/{src}.test.negative', 'r') as fd:
-        #     line = fd.readline()
-        #     while line is not None and line != '':
-        #         arr = line.split('\t')
-        #         u = eval(arr[0])[0]
-        #         test_data.append([u, eval(arr[0])[1]])
-        #         ur[u].add(int(eval(arr[0])[1]))
-        #         for i in arr[1:]:
-        #             test_data.append([u, int(i)])
-        #         line = fd.readline()
+
         for _, row in negs.iterrows():
             u = eval(row['user'])[0]
             test_data.append([u, eval(row['user'])[1]])
@@ -615,18 +582,6 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_metho
     elif data_split == 'fo':
         negatives = _negative_sampling(df)
         train, test = _split_fo(df, by_time)
-
-        # file_obj = open(f'./data/{src}/{src}.train.rating', 'w')
-        # for _, row in train.iterrows():
-        #     ln = '\t'.join(map(str, row.values)) + '\n'
-        #     file_obj.write(ln)
-        # file_obj.close()
-
-        # file_obj = open(f'./data/{src}/{src}.test.rating', 'w')
-        # for _, row in test.iterrows():
-        #     ln = '\t'.join(map(str, row.values)) + '\n'
-        #     file_obj.write(ln)
-        # file_obj.close()
 
         test_data = []
         ur = defaultdict(set) # ground_truth
@@ -646,9 +601,6 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_metho
     else:
         raise ValueError('Invalid data_split value, expect: loo, fo')
 
-    # train_data = pd.read_csv(f'./data/{src}/{src}.train.rating', sep='\t', header=None, 
-    #                          names=['user', 'item'], usecols=[0, 1], 
-    #                          dtype={0: np.int32, 1: np.int32}, engine='python')
     train_data_list, val_data_list = [], []
     if val_method == 'cv':
         train_data = train[['user', 'item']].reset_index(drop=True)
