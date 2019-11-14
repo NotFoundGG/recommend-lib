@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 15:27:10
+@LastEditTime: 2019-11-14 10:46:24
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SVD recommender, also known as BiasMF
@@ -23,6 +23,10 @@ from util.metrics import ndcg_at_k, map_at_k, hr_at_k, precision_at_k, recall_at
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--biased', 
                         type=bool, 
                         default=False, 
@@ -69,8 +73,7 @@ if __name__ == '__main__':
                         help='No. of folds for cross-validation')
     args = parser.parse_args()
 
-    src = args.dataset
-    df = load_rate(src)
+    df = load_rate(args.dataset, args.prepro)
 
     user_num, item_num = df.user.nunique(), df.item.nunique()
     df['user'] = pd.Categorical(df['user']).codes

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-13 15:07:32
+@LastEditTime: 2019-11-14 10:57:53
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -26,11 +26,52 @@ ML100K_NUMERIC_COLS = ['age']
 IGNORE_COLS = ['user', 'item']
 TARGET_COLS = ['rating']
 
+########################################################################################################
+def load_rate(src='ml-100k', prepro='origin'):
+    if src == 'ml-100k':
+        df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
+                        names=['user', 'item', 'rating', 'timestamp'], engine='python')
+        df.sort_values(['user', 'item', 'timestamp'], inplace=True)
+    elif src == 'netflix':
+        pass
+
+    else:
+        raise ValueError('Invalid Dataset Error')
+
+    if prepro == 'origin':
+        return df
+    elif prepro == '5core':
+        tmp1 = df.groupby(['user'], as_index=False)['item'].count()
+        tmp1.rename(columns={'item': 'cnt_item'}, inplace=True)
+        tmp2 = df.groupby(['item'], as_index=False)['user'].count()
+        tmp2.rename(columns={'user': 'cnt_user'}, inplace=True)
+        df = df.merge(tmp1, on=['user']).merge(tmp2, on=['item'])
+        df = df.query('cnt_item >= 5 and cnt_user >= 5').reset_index(drop=True).copy()
+        df.drop(['cnt_item', 'cnt_user'], axis=1, inplace=True)
+        del tmp1, tmp2
+        gc.collect()
+
+        return df
+    elif prepro == '10core':
+        tmp1 = df.groupby(['user'], as_index=False)['item'].count()
+        tmp1.rename(columns={'item': 'cnt_item'}, inplace=True)
+        tmp2 = df.groupby(['item'], as_index=False)['user'].count()
+        tmp2.rename(columns={'user': 'cnt_user'}, inplace=True)
+        df = df.merge(tmp1, on=['user']).merge(tmp2, on=['item'])
+        df = df.query('cnt_item >= 10 and cnt_user >= 10').reset_index(drop=True).copy()
+        df.drop(['cnt_item', 'cnt_user'], axis=1, inplace=True)
+        del tmp1, tmp2
+        gc.collect()
+        
+        return df
+    else:
+        raise ValueError('Invalid dataset preprocess type, origin/5core/10core expected')
+
 # SLIM data loader 
 class SlimData(object):
-    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5):
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
         print('Start read raw data')        
-        self.df = load_rate(src)
+        self.df = load_rate(src, prepro)
         self.df['user'] = pd.Categorical(self.df['user']).codes
         self.df['item'] = pd.Categorical(self.df['item']).codes
         self.num_user = self.df.user.nunique()
@@ -128,8 +169,8 @@ class SlimData(object):
             
 ########################################################################################################
 class WRMFData(object):
-    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5):
-        self.df = load_rate(src)
+    def __init__(self, src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
+        self.df = load_rate(src, prepro)
         self.data_split = data_split
         self.by_time = by_time
 
@@ -264,22 +305,9 @@ class WRMFData(object):
         # Output the unique list of user rows that were altered; set() for eliminate repeated user_index
         return training_set, test_set, list(set(user_index))
 
-########################################################################################################
-def load_rate(src='ml-100k'):
-    if src == 'ml-100k':
-        df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
-                        names=['user', 'item', 'rating', 'timestamp'], engine='python')
-        df.sort_values(['user', 'item', 'timestamp'], inplace=True)
-    elif src == 'netflix':
-        pass
-
-    else:
-        raise ValueError('Invalid Dataset Error')
-    return df
-
 # NeuFM/FM prepare
-def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5):
-    df = load_rate(src)
+def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
+    df = load_rate(src, prepro)
 
     if src == 'ml-100k':
         # user_info = pd.read_csv(f'./data/{src}/u.user', sep='|', header=None, engine='python', 
@@ -530,8 +558,8 @@ def _negative_sampling(ratings):
     return interact_status[['user', 'negative_samples']]
     
 
-def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_method='cv', fold_num=5):
-    df = load_rate(src)
+def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_method='cv', fold_num=5, prepro='origin'):
+    df = load_rate(src, prepro)
     # df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
     df['user'] = pd.Categorical(df.user).codes
     df['item'] = pd.Categorical(df.item).codes

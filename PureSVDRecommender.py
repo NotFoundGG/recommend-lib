@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-30 13:52:23
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 15:31:09
+@LastEditTime: 2019-11-14 10:56:01
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Pure SVD
@@ -20,6 +20,10 @@ from util.metrics import hr_at_k, ndcg_at_k, map_at_k, precision_at_k, recall_at
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--topk', 
                         type=int, 
                         default=10, 
@@ -50,9 +54,8 @@ if __name__ == '__main__':
                         help='No. of folds for cross-validation')
     args = parser.parse_args()
 
-    src = args.dataset
-    dataset = WRMFData(src, data_split=args.data_split, by_time=args.by_time, 
-                       val_method=args.val_method, fold_num=args.fold_num)
+    dataset = WRMFData(args.dataset, data_split=args.data_split, by_time=args.by_time, 
+                       val_method=args.val_method, fold_num=args.fold_num, prepro=args.prepro)
 
     # calculate metrics
     print(f'Start Calculating KPI metrics, validation method: {args.val_method}......')

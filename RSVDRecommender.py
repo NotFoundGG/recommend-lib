@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 15:30:10
+@LastEditTime: 2019-11-14 10:56:51
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Regularized SVD recommender, contain RSVD RSVD2
@@ -23,6 +23,10 @@ from util.metrics import ndcg_at_k, map_at_k, hr_at_k, precision_at_k, recall_at
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--factors', 
                         type=int, 
                         default=96, 
@@ -77,8 +81,7 @@ if __name__ == '__main__':
                         help='No. of folds for cross-validation')
     args = parser.parse_args()
 
-    src = args.dataset
-    df = load_rate(src)
+    df = load_rate(args.dataset, args.prepro)
 
     user_num, item_num = df.user.nunique(), df.item.nunique()
     df['user'] = pd.Categorical(df['user']).codes

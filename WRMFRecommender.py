@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 15:47:50
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 15:29:56
+@LastEditTime: 2019-11-14 11:01:25
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: WRMF
@@ -63,6 +63,10 @@ class WRMF(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--lambda_val', 
                         type=float, 
                         default=0.1, 
@@ -105,9 +109,8 @@ if __name__ == '__main__':
                         help='No. of folds for cross-validation')
     args = parser.parse_args()
 
-    src = args.dataset
-    dataset = WRMFData(src, data_split=args.data_split, by_time=args.by_time, 
-                       val_method=args.val_method, fold_num=args.fold_num)
+    dataset = WRMFData(args.dataset, data_split=args.data_split, by_time=args.by_time, 
+                       val_method=args.val_method, fold_num=args.fold_num, prepro=args.prepro)
 
     print(f'Start Calculating KPI metrics, validation method: {args.val_method}......')
     val_kpi = []
