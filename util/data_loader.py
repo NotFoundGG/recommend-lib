@@ -2,15 +2,18 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 13:39:16
+@LastEditTime: 2019-11-14 17:25:26
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
 '''
 import os
 import gc
+import csv
+import json
 import random
 from collections import defaultdict
+from collections.abc import MutableMapping
 
 import numpy as np
 import pandas as pd
@@ -22,17 +25,99 @@ from scipy.io import mmread
 
 from sklearn.model_selection import train_test_split, KFold
 
+def get_superset_of_column_names_from_file(json_file_path):
+    """Read in the json dataset file and return the superset of column names."""
+    column_names = set()
+    with open(json_file_path) as fin:
+        for line in fin:
+            line_contents = json.loads(line)
+            column_names.update(
+                    set(get_column_names(line_contents).keys())
+                    )
+    return column_names
+
+def get_column_names(line_contents, parent_key=''):
+    """Return a list of flattened key names given a dict.
+    Example:
+        line_contents = {
+            'a': {
+                'b': 2,
+                'c': 3,
+                },
+        }
+        will return: ['a.b', 'a.c']
+    These will be the column names for the eventual csv file.
+    """
+    column_names = []
+    for k, v in line_contents.items():
+        column_name = "{0}.{1}".format(parent_key, k) if parent_key else k
+        if isinstance(v, MutableMapping):
+            column_names.extend(
+                    get_column_names(v, column_name).items()
+                    )
+        else:
+            column_names.append((column_name, v))
+    return dict(column_names)
+
+def get_nested_value(d, key):
+    """Return a dictionary item given a dictionary `d` and a flattened key from `get_column_names`.
+    
+    Example:
+        d = {
+            'a': {
+                'b': 2,
+                'c': 3,
+                },
+        }
+        key = 'a.b'
+        will return: 2
+    
+    """
+    if '.' not in key:
+        if d:
+            if key not in d:
+                return None
+        else:
+            return None
+        return d[key]
+    base_key, sub_key = key.split('.', 1)
+    if base_key not in d:
+        return None
+    sub_dict = d[base_key]
+    return get_nested_value(sub_dict, sub_key)
+
+def get_row(line_contents, column_names):
+    """Return a csv compatible row given column names and a dict."""
+    row = []
+    for column_name in column_names:
+        line_value = get_nested_value(
+                        line_contents,
+                        column_name,
+                        )
+        if line_value is not None:
+            row.append('{0}'.format(line_value))
+        else:
+            row.append('')
+    return row
+
 ########################################################################################################
 def load_rate(src='ml-100k', prepro='origin'):
     if src == 'ml-100k':
         df = pd.read_csv(f'./data/{src}/u.data', sep='\t', header=None, 
                         names=['user', 'item', 'rating', 'timestamp'], engine='python')
     elif src == 'ml-1m':
-        pass
+        df = pd.read_csv(f'./data/{src}/ratings.dat', sep='::', header=None, 
+                        names=['user', 'item', 'rating', 'timestamp'], engine='python')
+        # only consider rating >=4 for data density
+        df = df.query('rating >= 4').reset_index(drop=True).copy()
     elif src == 'ml-10m':
-        pass
+        df = pd.read_csv(f'./data/{src}/ratings.dat', sep='::', header=None, 
+                         names=['user', 'item', 'rating', 'timestamp'], engine='python')
+        df = df.query('rating >= 4').reset_index(drop=True).copy()
     elif src == 'ml-20m':
-        pass
+        df = pd.read_csv(f'./data/{src}/ratings.csv')
+        df.rename(columns={'userId':'user', 'movieId':'item'}, inplace=True)
+        df = df.query('rating >= 4').reset_index(drop=True)
     elif src == 'netflix':
         pass
     elif src == 'lastfm':
@@ -44,8 +129,9 @@ def load_rate(src='ml-100k', prepro='origin'):
     elif src == 'amazon-cloth':
         df = pd.read_csv(f'./data/{src}/ratings_Clothing_Shoes_and_Jewelry.csv', 
                          names=['user', 'item', 'rating', 'timestamp'])
-    elif src == 'amazon-elec':
-        pass
+    elif src == 'amazon-electronic':
+        df = pd.read_csv(f'./data/{src}/ratings_Electronics.csv', 
+                         names=['user', 'item', 'rating', 'timestamp'])
     elif src == 'amazon-book':
         pass
     elif src == 'amazon-music':
@@ -54,7 +140,21 @@ def load_rate(src='ml-100k', prepro='origin'):
     elif src == 'epinions':
         pass
     elif src == 'yelp':
-        pass
+        json_file_path = f'./data/{src}/yelp_academic_dataset_review.json'
+        csv_file_path = json_file_path.replace('json', 'csv')
+        if os.path.exists(csv_file_path):
+            df = pd.read_csv(csv_file_path)
+        else:
+            column_names = list(get_superset_of_column_names_from_file(json_file_path))
+            with open(csv_file_path, 'w+') as fout:
+                csv_file = csv.writer(fout)
+                csv_file.writerow(column_names)
+                with open(json_file_path) as fin:
+                    for line in fin:
+                        line_contents = json.loads(line)
+                        csv_file.writerow(get_row(line_contents, column_names))
+            print('Finish convert file from json to csv......')
+
     elif src == 'citeulike':
         pass
     else:
@@ -90,6 +190,341 @@ def load_rate(src='ml-100k', prepro='origin'):
         return df
     else:
         raise ValueError('Invalid dataset preprocess type, origin/5core/10core expected')
+
+# NeuFM/FM prepare
+def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
+    df = load_rate(src, prepro)
+
+    if src == 'ml-100k':
+        # rating >=4 interaction =1
+        df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
+
+        df['user'] = pd.Categorical(df.user).codes
+        df['item'] = pd.Categorical(df.item).codes
+        user_tag_info = df[['user']].copy()
+        item_tag_info = df[['item']].copy()
+        user_tag_info = user_tag_info.drop_duplicates()
+        item_tag_info = item_tag_info.drop_duplicates()
+
+    feat_idx_dict = {} # store the start index of each category
+    idx = 0
+    for col in df.columns:
+        if col not in ['rating', 'timestamp']:
+            feat_idx_dict[col] = idx
+            idx = idx + df[col].max() + 1
+    print('Finish build category index dictionary......')
+
+    if data_split == 'fo':
+        if by_time:
+            df = df.sample(frac=1)
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            
+            split_idx = int(np.ceil(len(df) * 0.8)) # for train test
+            train, test = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
+        else:
+            train, test = train_test_split(df, test_size=0.2)
+    elif data_split == 'loo':
+        if by_time:
+            df = df.sample(frac=1)
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            train, test = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
+            train.drop(['rank_latest'], axis=1, inplace=True)
+            test.drop(['rank_latest'], axis=1, inplace=True)
+        else:
+            test = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+            test_key = test[['user', 'item']].copy()
+            train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+    else:
+        raise ValueError('Invalid data_split value, expect: loo, fo')
+
+    test = test.reset_index(drop=True)
+    test.drop(['timestamp'], axis=1, inplace=True)
+
+    train_list, val_list = [], []
+    if val_method == 'cv':
+        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
+        for train_index, val_index in kf.split(train):
+            train_set, val_set = train.iloc[train_index, :].copy(), train.iloc[val_index, :].copy()
+            del train_set['timestamp'], val_set['timestamp']
+
+            train_list.append(train_set)
+            val_list.append(val_set)
+    elif val_method == 'loo':
+        val_set = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        val_key = val_set[['user', 'item']].copy()
+        train_set = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy()
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    elif val_method == 'tloo':
+        train = train.sample(frac=1)
+        train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+        train['rank_latest'] = train.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        train_set = train[train['rank_latest'] > 1].copy()
+        val_set = train[train['rank_latest'] == 1].copy()
+        del train_set['rank_latest'], val_set['rank_latest']
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    elif val_method == 'tfo':
+        train = train.sample(frac=1)
+        train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+        split_idx = int(np.ceil(len(train) * 0.9))
+        train_set, val_set = train.iloc[:split_idx, :].copy(), train_set.iloc[split_idx:, :].copy()
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    else:
+        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
+
+    test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
+    ui = test[['user', 'item']].copy()
+    u_is = defaultdict(list)
+    for u in test_user_set:
+        u_is[u] = ui.loc[ui.user==u, 'item'].values.tolist()
+
+    gc.collect()
+    for fold in range(len(train_list)):
+        file_obj = open(f'./data/{src}/{src}.train.libfm.{fold}', 'w')
+        for idx, row in train_list[fold].iterrows():
+            l = ''
+            for col in train_list[fold].columns:
+                if col != 'rating':
+                    l += ' '
+                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+            l = str(row['rating']) + l + '\n'
+            file_obj.write(l)
+        file_obj.close()
+
+        file_obj = open(f'./data/{src}/{src}.valid.libfm.{fold}', 'w')
+        for idx, row in val_list[fold].iterrows():
+            l = ''
+            for col in val_list[fold].columns:
+                if col != 'rating':
+                    l += ' '
+                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+            l = str(row['rating']) + l + '\n'
+            file_obj.write(l)
+        file_obj.close()
+
+    file_obj = open(f'./data/{src}/{src}.test.libfm', 'w')
+    for idx, row in test.iterrows():
+        l = ''
+        for col in test.columns:
+            if col != 'rating':
+                l += ' '
+                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
+        l = str(row['rating']) + l + '\n'
+        file_obj.write(l)
+    file_obj.close()
+
+    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is
+
+###############
+def _split_loo(ratings, by_time=1):
+    if by_time:
+        ratings['rank_latest'] = ratings.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        train = ratings[ratings['rank_latest'] > 1].copy()
+        test = ratings[ratings['rank_latest'] == 1].copy()
+    else:
+        ratings = ratings.sample(frac=1)
+        test = ratings.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        test_key = test[['user', 'item']].copy()
+        train = ratings.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+    assert train['user'].nunique() == test['user'].nunique()
+    return train[['user', 'item', 'rating', 'timestamp']], test[['user', 'item', 'rating', 'timestamp']]
+
+def _split_fo(ratings, by_time=0):
+    if by_time:
+        ratings = ratings.sample(frac=1)
+        ratings = ratings.sort_values(['timestamp']).reset_index(drop=True)
+        split_idx = int(np.ceil(len(ratings) * 0.8))
+        train, test = ratings.iloc[:split_idx, :].copy(), ratings.iloc[split_idx:, :].copy()
+    else:
+        train, test = train_test_split(ratings, test_size=.2)
+    return train[['user', 'item', 'rating', 'timestamp']], test[['user', 'item', 'rating', 'timestamp']]
+
+def _negative_sampling(ratings):
+    item_pool = set(ratings.item.unique())
+
+    interact_status = ratings.groupby('user')['item'].apply(set).reset_index()
+    interact_status.rename(columns={'item': 'interacted_items'}, inplace=True)
+    interact_status['negative_items'] = interact_status['interacted_items'].apply(lambda x: item_pool - x)
+    interact_status['negative_samples'] = interact_status['negative_items'].apply(lambda x: random.sample(x, 99))
+    
+    return interact_status[['user', 'negative_samples']]
+    
+
+def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_method='cv', fold_num=5, prepro='origin'):
+    df = load_rate(src, prepro)
+    # df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
+    df['user'] = pd.Categorical(df.user).codes
+    df['item'] = pd.Categorical(df.item).codes
+
+    user_num = df['user'].max() + 1
+    item_num = df['item'].max() + 1
+
+    if data_split == 'loo':
+        negatives = _negative_sampling(df)
+        train, test = _split_loo(df, by_time)
+
+        negs = test.merge(negatives, on=['user'], how='left')
+        negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
+        negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
+        
+        test_data = []
+        ur = defaultdict(set)
+
+        for _, row in negs.iterrows():
+            u = eval(row['user'])[0]
+            test_data.append([u, eval(row['user'])[1]])
+            ur[u].add(int(row['user'][1]))
+            for i in row['negative_samples']:
+                test_data.append([u, int(i)])
+
+    elif data_split == 'fo':
+        negatives = _negative_sampling(df)
+        train, test = _split_fo(df, by_time)
+
+        test_data = []
+        ur = defaultdict(set) # ground_truth
+        max_i_num = 100
+        for u in test.user.unique():
+            pre_cands = negatives.query(f'user=={u}')['negative_samples'].values[0]  # 99 pre-candidates
+            test_u_is = test.query(f'user=={u}')['item'].values.tolist()
+            ur[u] = set(test_u_is)
+            if len(test_u_is) < max_i_num:
+                cands_num = max_i_num - len(test_u_is)
+                candidates = random.sample(pre_cands, cands_num)
+                test_u_is = list(set(candidates) | set(test_u_is))
+            else:
+                test_u_is = random.sample(test_u_is, max_i_num)
+            for i in test_u_is:
+                test_data.append([u, i])
+    else:
+        raise ValueError('Invalid data_split value, expect: loo, fo')
+
+    train_data_list, val_data_list = [], []
+    if val_method == 'cv':
+        train_data = train[['user', 'item']].reset_index(drop=True)
+        train_data = train_data.values
+        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
+        for train_index, val_index in kf.split(train_data):
+            train_data_list.append(train_data[train_index].tolist())
+            val_data_list.append(train_data[val_index].tolist())
+    elif val_method == 'tloo':
+        train_data = train[['user', 'item', 'timestamp']].reset_index(drop=True)
+        train_data = train_data.sample(frac=1)
+        train_data = train_data.sort_values(['timestamp']).reset_index(drop=True)
+
+        train_data['rank_latest'] = train_data.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        sub_train = train_data[train_data['rank_latest'] > 1].copy()
+        sub_val = train_data[train_data['rank_latest'] == 1].copy()
+        sub_val.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
+        sub_train.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
+
+        train_data_list.append(sub_train)
+        val_data_list.append(sub_val)
+    elif val_method == 'loo':
+        sub_val = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        sub_val = sub_val[['user', 'item']].copy()
+        sub_train = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(sub_val)).reset_index().copy()
+        sub_train = sub_train[['user', 'item']].copy()
+
+        train_data_list.append(sub_train)
+        val_data_list.append(sub_val)
+    elif val_method == 'tfo':
+        train_data = train[['user', 'item', 'timestamp']].reset_index(drop=True)
+        train_data = train_data.sample(frac=1)
+        train_data = train_data.sort_values(['timestamp']).reset_index(drop=True)
+
+        split_idx = int(np.ceil(len(train_data) * 0.9))
+        train_data.drop(['timestamp'], axis=1, inplace=True)
+        sub_train, sub_val = train_data.iloc[:split_idx, :].copy(), train_data.iloc[split_idx:, :].copy()
+
+        train_data_list.append(sub_train.values.tolist())
+        val_data_list.append(sub_val.values.tolist())
+    else:
+        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
+    train_mat_list = []
+    for fold in range(len(train_data_list)):
+        # load ratings as a dok matrix
+        train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
+        for x in train_data_list[fold]:
+            train_mat[x[0], x[1]] = 1.0
+
+        train_mat_list.append(train_mat)
+    print('Finish build train and test set......')
+    
+    return train_data_list, test_data, user_num, item_num, train_mat_list, ur, val_data_list
+
+def read_features(file, features):
+    ''' Read features from the given file. '''
+    i = len(features)
+    with open(file, 'r') as fd:
+        line = fd.readline()
+        while line:
+            items = line.strip().split()
+            for item in items[1:]:
+                item = item.split(':')[0]
+                if item not in features:
+                    features[item] = i
+                    i += 1
+            line = fd.readline()
+    return features
+
+def map_features(src='ml-100k'):
+    features = {}
+    features = read_features(f'./data/{src}/{src}.train.libfm.0', features)
+    features = read_features(f'./data/{src}/{src}.valid.libfm.0', features)
+    features = read_features(f'./data/{src}/{src}.test.libfm', features)
+    print(f'number of features: {len(features)}')
+
+    return features, len(features)
+
+class FMData(data.Dataset):
+    ''' Construct the FM pytorch dataset. '''
+    def __init__(self, file, feature_map, loss_type='square_loss'):
+        super(FMData, self).__init__()
+        self.label = []
+        self.features = []
+        self.feature_values = []
+        assert loss_type in ['square_loss', 'log_loss']
+
+        with open(file, 'r') as fd:
+            line = fd.readline()
+
+            while line:
+                items = line.strip().split()
+                # convert features
+                raw = [item.split(':')[0] for item in items[1:]]
+                self.features.append(np.array([feature_map[item] for item in raw], dtype=np.int64))
+                self.feature_values.append(np.array([item.split(':')[1] for item in items[1:]], 
+                                           dtype=np.float32))
+                # convert labels
+                if loss_type == 'square_loss':
+                    self.label.append(np.float32(items[0]))
+                else: # log_loss
+                    label = 1 if float(items[0]) > 0 else 0
+                    self.label.append(label)
+
+                line = fd.readline()
+        assert all(len(item) == len(self.features[0]) for item in self.features), 'features are of different length'
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        label = self.label[idx]
+        features = self.features[idx]
+        feature_values = self.feature_values[idx]
+        return features, feature_values, label
 
 # SLIM data loader 
 class SlimData(object):
@@ -319,341 +754,6 @@ class WRMFData(object):
         training_set.eliminate_zeros()
         # Output the unique list of user rows that were altered; set() for eliminate repeated user_index
         return training_set, test_set, list(set(user_index))
-
-# NeuFM/FM prepare
-def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
-    df = load_rate(src, prepro)
-
-    if src == 'ml-100k':
-        # rating >=4 interaction =1
-        df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
-
-        df['user'] = pd.Categorical(df.user).codes
-        df['item'] = pd.Categorical(df.item).codes
-        user_tag_info = df[['user']].copy()
-        item_tag_info = df[['item']].copy()
-        user_tag_info = user_tag_info.drop_duplicates()
-        item_tag_info = item_tag_info.drop_duplicates()
-
-    feat_idx_dict = {} # store the start index of each category
-    idx = 0
-    for col in df.columns:
-        if col not in ['rating', 'timestamp']:
-            feat_idx_dict[col] = idx
-            idx = idx + df[col].max() + 1
-    print('Finish build category index dictionary......')
-
-    if data_split == 'fo':
-        if by_time:
-            df = df.sample(frac=1)
-            df = df.sort_values(['timestamp']).reset_index(drop=True)
-            
-            split_idx = int(np.ceil(len(df) * 0.8)) # for train test
-            train, test = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
-        else:
-            train, test = train_test_split(df, test_size=0.2)
-    elif data_split == 'loo':
-        if by_time:
-            df = df.sample(frac=1)
-            df = df.sort_values(['timestamp']).reset_index(drop=True)
-            df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
-            train, test = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
-            train.drop(['rank_latest'], axis=1, inplace=True)
-            test.drop(['rank_latest'], axis=1, inplace=True)
-        else:
-            test = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
-            test_key = test[['user', 'item']].copy()
-            train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
-    else:
-        raise ValueError('Invalid data_split value, expect: loo, fo')
-
-    test = test.reset_index(drop=True)
-    test.drop(['timestamp'], axis=1, inplace=True)
-
-    train_list, val_list = [], []
-    if val_method == 'cv':
-        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
-        for train_index, val_index in kf.split(train):
-            train_set, val_set = train.iloc[train_index, :].copy(), train.iloc[val_index, :].copy()
-            del train_set['timestamp'], val_set['timestamp']
-
-            train_list.append(train_set)
-            val_list.append(val_set)
-    elif val_method == 'loo':
-        val_set = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
-        val_key = val_set[['user', 'item']].copy()
-        train_set = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy()
-        del train_set['timestamp'], val_set['timestamp']
-
-        train_list.append(train_set)
-        val_list.append(val_set)
-    elif val_method == 'tloo':
-        train = train.sample(frac=1)
-        train = train.sort_values(['timestamp']).reset_index(drop=True)
-
-        train['rank_latest'] = train.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
-        train_set = train[train['rank_latest'] > 1].copy()
-        val_set = train[train['rank_latest'] == 1].copy()
-        del train_set['rank_latest'], val_set['rank_latest']
-        del train_set['timestamp'], val_set['timestamp']
-
-        train_list.append(train_set)
-        val_list.append(val_set)
-    elif val_method == 'tfo':
-        train = train.sample(frac=1)
-        train = train.sort_values(['timestamp']).reset_index(drop=True)
-
-        split_idx = int(np.ceil(len(train) * 0.9))
-        train_set, val_set = train.iloc[:split_idx, :].copy(), train_set.iloc[split_idx:, :].copy()
-        del train_set['timestamp'], val_set['timestamp']
-
-        train_list.append(train_set)
-        val_list.append(val_set)
-    else:
-        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
-
-    test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
-    ui = test[['user', 'item']].copy()
-    u_is = defaultdict(list)
-    for u in test_user_set:
-        u_is[u] = ui.loc[ui.user==u, 'item'].values.tolist()
-
-    gc.collect()
-    for fold in range(len(train_list)):
-        file_obj = open(f'./data/{src}/{src}.train.libfm.{fold}', 'w')
-        for idx, row in train_list[fold].iterrows():
-            l = ''
-            for col in train_list[fold].columns:
-                if col != 'rating':
-                    l += ' '
-                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
-            l = str(row['rating']) + l + '\n'
-            file_obj.write(l)
-        file_obj.close()
-
-        file_obj = open(f'./data/{src}/{src}.valid.libfm.{fold}', 'w')
-        for idx, row in val_list[fold].iterrows():
-            l = ''
-            for col in val_list[fold].columns:
-                if col != 'rating':
-                    l += ' '
-                    l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
-            l = str(row['rating']) + l + '\n'
-            file_obj.write(l)
-        file_obj.close()
-
-    file_obj = open(f'./data/{src}/{src}.test.libfm', 'w')
-    for idx, row in test.iterrows():
-        l = ''
-        for col in test.columns:
-            if col != 'rating':
-                l += ' '
-                l = l + str(int(feat_idx_dict[col] + row[col])) + ':1'
-        l = str(row['rating']) + l + '\n'
-        file_obj.write(l)
-    file_obj.close()
-
-    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is
-
-def read_features(file, features):
-    ''' Read features from the given file. '''
-    i = len(features)
-    with open(file, 'r') as fd:
-        line = fd.readline()
-        while line:
-            items = line.strip().split()
-            for item in items[1:]:
-                item = item.split(':')[0]
-                if item not in features:
-                    features[item] = i
-                    i += 1
-            line = fd.readline()
-    return features
-
-def map_features(src='ml-100k'):
-    features = {}
-    features = read_features(f'./data/{src}/{src}.train.libfm.0', features)
-    features = read_features(f'./data/{src}/{src}.valid.libfm.0', features)
-    features = read_features(f'./data/{src}/{src}.test.libfm', features)
-    print(f'number of features: {len(features)}')
-
-    return features, len(features)
-
-class FMData(data.Dataset):
-    ''' Construct the FM pytorch dataset. '''
-    def __init__(self, file, feature_map, loss_type='square_loss'):
-        super(FMData, self).__init__()
-        self.label = []
-        self.features = []
-        self.feature_values = []
-        assert loss_type in ['square_loss', 'log_loss']
-
-        with open(file, 'r') as fd:
-            line = fd.readline()
-
-            while line:
-                items = line.strip().split()
-                # convert features
-                raw = [item.split(':')[0] for item in items[1:]]
-                self.features.append(np.array([feature_map[item] for item in raw], dtype=np.int64))
-                self.feature_values.append(np.array([item.split(':')[1] for item in items[1:]], 
-                                           dtype=np.float32))
-                # convert labels
-                if loss_type == 'square_loss':
-                    self.label.append(np.float32(items[0]))
-                else: # log_loss
-                    label = 1 if float(items[0]) > 0 else 0
-                    self.label.append(label)
-
-                line = fd.readline()
-        assert all(len(item) == len(self.features[0]) for item in self.features), 'features are of different length'
-
-    def __len__(self):
-        return len(self.label)
-
-    def __getitem__(self, idx):
-        label = self.label[idx]
-        features = self.features[idx]
-        feature_values = self.feature_values[idx]
-        return features, feature_values, label
-
-###############
-def _split_loo(ratings, by_time=1):
-    if by_time:
-        ratings['rank_latest'] = ratings.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
-        train = ratings[ratings['rank_latest'] > 1].copy()
-        test = ratings[ratings['rank_latest'] == 1].copy()
-    else:
-        ratings = ratings.sample(frac=1)
-        test = ratings.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
-        test_key = test[['user', 'item']].copy()
-        train = ratings.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
-    assert train['user'].nunique() == test['user'].nunique()
-    return train[['user', 'item', 'rating', 'timestamp']], test[['user', 'item', 'rating', 'timestamp']]
-
-def _split_fo(ratings, by_time=0):
-    if by_time:
-        ratings = ratings.sample(frac=1)
-        ratings = ratings.sort_values(['timestamp']).reset_index(drop=True)
-        split_idx = int(np.ceil(len(ratings) * 0.8))
-        train, test = ratings.iloc[:split_idx, :].copy(), ratings.iloc[split_idx:, :].copy()
-    else:
-        train, test = train_test_split(ratings, test_size=.2)
-    return train[['user', 'item', 'rating', 'timestamp']], test[['user', 'item', 'rating', 'timestamp']]
-
-def _negative_sampling(ratings):
-    item_pool = set(ratings.item.unique())
-
-    interact_status = ratings.groupby('user')['item'].apply(set).reset_index()
-    interact_status.rename(columns={'item': 'interacted_items'}, inplace=True)
-    interact_status['negative_items'] = interact_status['interacted_items'].apply(lambda x: item_pool - x)
-    interact_status['negative_samples'] = interact_status['negative_items'].apply(lambda x: random.sample(x, 99))
-    
-    return interact_status[['user', 'negative_samples']]
-    
-
-def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_method='cv', fold_num=5, prepro='origin'):
-    df = load_rate(src, prepro)
-    # df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
-    df['user'] = pd.Categorical(df.user).codes
-    df['item'] = pd.Categorical(df.item).codes
-
-    user_num = df['user'].max() + 1
-    item_num = df['item'].max() + 1
-
-    if data_split == 'loo':
-        negatives = _negative_sampling(df)
-        train, test = _split_loo(df, by_time)
-
-        negs = test.merge(negatives, on=['user'], how='left')
-        negs['user'] = negs.apply(lambda x: f'({x["user"]},{x["item"]})', axis=1)
-        negs.drop(['item', 'rating', 'timestamp'], axis=1, inplace=True)
-        
-        test_data = []
-        ur = defaultdict(set)
-
-        for _, row in negs.iterrows():
-            u = eval(row['user'])[0]
-            test_data.append([u, eval(row['user'])[1]])
-            ur[u].add(int(row['user'][1]))
-            for i in row['negative_samples']:
-                test_data.append([u, int(i)])
-
-    elif data_split == 'fo':
-        negatives = _negative_sampling(df)
-        train, test = _split_fo(df, by_time)
-
-        test_data = []
-        ur = defaultdict(set) # ground_truth
-        max_i_num = 100
-        for u in test.user.unique():
-            pre_cands = negatives.query(f'user=={u}')['negative_samples'].values[0]  # 99 pre-candidates
-            test_u_is = test.query(f'user=={u}')['item'].values.tolist()
-            ur[u] = set(test_u_is)
-            if len(test_u_is) < max_i_num:
-                cands_num = max_i_num - len(test_u_is)
-                candidates = random.sample(pre_cands, cands_num)
-                test_u_is = list(set(candidates) | set(test_u_is))
-            else:
-                test_u_is = random.sample(test_u_is, max_i_num)
-            for i in test_u_is:
-                test_data.append([u, i])
-    else:
-        raise ValueError('Invalid data_split value, expect: loo, fo')
-
-    train_data_list, val_data_list = [], []
-    if val_method == 'cv':
-        train_data = train[['user', 'item']].reset_index(drop=True)
-        train_data = train_data.values
-        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
-        for train_index, val_index in kf.split(train_data):
-            train_data_list.append(train_data[train_index].tolist())
-            val_data_list.append(train_data[val_index].tolist())
-    elif val_method == 'tloo':
-        train_data = train[['user', 'item', 'timestamp']].reset_index(drop=True)
-        train_data = train_data.sample(frac=1)
-        train_data = train_data.sort_values(['timestamp']).reset_index(drop=True)
-
-        train_data['rank_latest'] = train_data.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
-        sub_train = train_data[train_data['rank_latest'] > 1].copy()
-        sub_val = train_data[train_data['rank_latest'] == 1].copy()
-        sub_val.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
-        sub_train.drop(['rank_latest', 'timestamp'], axis=1, inplace=True)
-
-        train_data_list.append(sub_train)
-        val_data_list.append(sub_val)
-    elif val_method == 'loo':
-        sub_val = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
-        sub_val = sub_val[['user', 'item']].copy()
-        sub_train = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(sub_val)).reset_index().copy()
-        sub_train = sub_train[['user', 'item']].copy()
-
-        train_data_list.append(sub_train)
-        val_data_list.append(sub_val)
-    elif val_method == 'tfo':
-        train_data = train[['user', 'item', 'timestamp']].reset_index(drop=True)
-        train_data = train_data.sample(frac=1)
-        train_data = train_data.sort_values(['timestamp']).reset_index(drop=True)
-
-        split_idx = int(np.ceil(len(train_data) * 0.9))
-        train_data.drop(['timestamp'], axis=1, inplace=True)
-        sub_train, sub_val = train_data.iloc[:split_idx, :].copy(), train_data.iloc[split_idx:, :].copy()
-
-        train_data_list.append(sub_train.values.tolist())
-        val_data_list.append(sub_val.values.tolist())
-    else:
-        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
-    train_mat_list = []
-    for fold in range(len(train_data_list)):
-        # load ratings as a dok matrix
-        train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
-        for x in train_data_list[fold]:
-            train_mat[x[0], x[1]] = 1.0
-
-        train_mat_list.append(train_mat)
-    print('Finish build train and test set......')
-    
-    return train_data_list, test_data, user_num, item_num, train_mat_list, ur, val_data_list
 
 class NCFData(data.Dataset):
     def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
