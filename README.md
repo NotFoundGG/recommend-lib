@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-12 17:03:46
+ * @LastEditTime: 2019-11-14 11:32:49
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -16,13 +16,22 @@
     - [MovieLens 10M](https://grouplens.org/datasets/movielens/10m/)
     - [MovieLens 20M](https://grouplens.org/datasets/movielens/20m/)
     - [Netflix Prize Data](https://archive.org/download/nf_prize_dataset.tar)
+    - [Last.fm](https://grouplens.org/datasets/hetrec-2011/)
+    - [Book Crossing](https://grouplens.org/datasets/book-crossing/)
+    - [Pinterest](https://data.mendeley.com/datasets/fs4k2zc5j5/3)
+    - [Epinions](http://trustlet.org/epinions.html)
     - [CiteULike](https://github.com/js05212/citeulike-a)
-    - [Amazon](http://jmcauley.ucsd.edu/data/amazon/links.html)
-    - [Yelp]()
+    - [Amazon-Book](http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Books.csv)
+    - [Amazon-Electronic](http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Electronics.csv)
+    - [Amazon-Cloth](http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Clothing_Shoes_and_Jewelry.csv)
+    - [Amazon-Music](http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Digital_Music.csv)
+    - [Yelp Challenge](https://kaggle.com/yelp-dataset/yelp-dataset)
 
 2. Item-Ranking recommendation algorithms reimplementation with pytorch, numpy and scipy.
 
 3. Before running, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `macOS` or `.pyd` file for `WindowsOS` used for further import.
+
+4. After download Yelp dataset into specific folder `data/yelp/`, you should run `json2csv.py yelp_academic_dataset_review.json` firstly.
 
 ## The requirements are as follows:
 
