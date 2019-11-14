@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:56:31
 @LastEditors: Yudi
-@LastEditTime: 2019-11-13 15:14:40
+@LastEditTime: 2019-11-14 10:47:02
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: BPR recommender
@@ -51,6 +51,10 @@ class BPR(nn.Module):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--lr', 
                         type=float, 
                         default=0.01, 
@@ -115,11 +119,10 @@ if __name__ == '__main__':
     cudnn.benchmark = True
 
     # load data
-    src = args.dataset
     train_data_list, test_data, user_num, \
-    item_num, train_mat_list, ur, val_data_list = load_mat(src, data_split=args.data_split, 
+    item_num, train_mat_list, ur, val_data_list = load_mat(args.dataset, data_split=args.data_split, 
                                                            by_time=args.by_time, val_method=args.val_method, 
-                                                           fold_num=args.fold_num)
+                                                           fold_num=args.fold_num, prepro=args.prepro)
 
     if args.val_method in ['tloo', 'loo', 'tfo']:
         fn = 1
@@ -185,9 +188,9 @@ if __name__ == '__main__':
             if HR > best_hr:
                 best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
                 if args.out:
-                    if not os.path.exists(f'./models/{src}/'):
-                        os.makedirs(f'./models/{src}/')
-                    torch.save(model, f'./models/{src}/BPR.pt.{fold}')
+                    if not os.path.exists(f'./models/{args.dataset}/'):
+                        os.makedirs(f'./models/{args.dataset}/')
+                    torch.save(model, f'./models/{args.dataset}/BPR.pt.{fold}')
 
         # calculate KPI
         preds = {}

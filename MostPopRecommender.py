@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-11-13 16:09:36
+@LastEditTime: 2019-11-14 10:49:05
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -46,6 +46,10 @@ class MostPopRecommender(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--topk', 
                         type=int, 
                         default=10, 
@@ -73,8 +77,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     k = args.topk
-    src = args.dataset
-    df = load_rate(src)
+    df = load_rate(args.dataset, args.prepro)
     # split dataset
     if args.data_split == 'fo':
         if args.by_time:

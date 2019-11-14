@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 11:45:35
 @LastEditors: Yudi
-@LastEditTime: 2019-11-13 15:25:25
+@LastEditTime: 2019-11-14 10:50:18
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural Collaborative Filtering Recommender
@@ -125,6 +125,10 @@ class NCF(nn.Module):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--lr', 
                         type=float, 
                         default=0.001, 
@@ -197,11 +201,10 @@ if __name__ == '__main__':
     cudnn.benchmark = True
 
     # load data
-    src = args.dataset
     train_data_list, test_data, user_num, \
-    item_num, train_mat_list, ur, val_data_list = load_mat(src, data_split=args.data_split, 
+    item_num, train_mat_list, ur, val_data_list = load_mat(args.dataset, data_split=args.data_split, 
                                                            by_time=args.by_time, val_method=args.val_method, 
-                                                           fold_num=args.fold_num)
+                                                           fold_num=args.fold_num, prepro=args.prepro)
 
     if args.val_method in ['tloo', 'loo', 'tfo']:
         fn = 1
@@ -228,9 +231,9 @@ if __name__ == '__main__':
         model_name = args.model_name
         assert model_name in ['MLP', 'GMF', 'NeuMF-end', 'NeuMF-pre']
 
-        GMF_model_path = f'./models/{src}/GMF.pt.{fold}'
-        MLP_model_path = f'./models/{src}/MLP.pt.{fold}'
-        NeuMF_model_path = f'./models/{src}/NeuMF.pt.{fold}'
+        GMF_model_path = f'./models/{args.dataset}/GMF.pt.{fold}'
+        MLP_model_path = f'./models/{args.dataset}/MLP.pt.{fold}'
+        NeuMF_model_path = f'./models/{args.dataset}/NeuMF.pt.{fold}'
 
         if model_name == 'NeuMF-pre':
             assert os.path.exists(GMF_model_path), 'lack of GMF model'    
@@ -289,9 +292,9 @@ if __name__ == '__main__':
             if HR > best_hr:
                 best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
                 if args.out:
-                    if not os.path.exists(f'./models/{src}'):
-                        os.makedirs(f'./models/{src}')
-                    torch.save(model, f'./models/{src}/{model_name.split("-")[0]}.pt.{fold}')
+                    if not os.path.exists(f'./models/{args.dataset}'):
+                        os.makedirs(f'./models/{args.dataset}')
+                    torch.save(model, f'./models/{args.dataset}/{model_name.split("-")[0]}.pt.{fold}')
 
         print('End. Best epoch {:03d}: HR = {:.3f}'.format(best_epoch, best_hr))
 

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-11-12 15:27:58
+@LastEditTime: 2019-11-14 10:58:04
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
@@ -150,6 +150,10 @@ class SLIM(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--topk', 
                         type=int, 
                         default=10, 
@@ -192,8 +196,7 @@ if __name__ == '__main__':
                         help='No. of folds for cross-validation')
     args = parser.parse_args()
 
-    src = args.dataset
-    slim_data= SlimData(src, args.data_split, args.by_time, args.val_method, args.fold_num)
+    slim_data= SlimData(args.dataset, args.data_split, args.by_time, args.val_method, args.fold_num, args.prepro)
 
     # genereate top-N list for test user set
     test_user_set = list({ele[0] for ele in slim_data.test})

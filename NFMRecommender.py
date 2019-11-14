@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-13 12:42:17
+@LastEditTime: 2019-11-14 10:54:41
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -173,6 +173,10 @@ class FM(nn.Module):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--prepro', 
+                        type=str, 
+                        default='origin', 
+                        help='dataset type for experiment, origin, 5core, 10core available')
     parser.add_argument('--lr', 
                         type=float, 
                         default=0.05, 
@@ -261,11 +265,11 @@ if __name__ == '__main__':
     # device = torch.device('cpu') # turn to cpu mode
 
     ### prepare dataset ###
-    src = args.dataset
     feat_idx_dict, user_tag_info, item_tag_info,  \
-    test_user_set, test_item_set, ground_truth = load_libfm(src, data_split=args.data_split, by_time=args.by_time, 
-                                                            val_method=args.val_method, fold_num=args.fold_num)
-    features_map, num_features = map_features(src)
+    test_user_set, test_item_set, ground_truth = load_libfm(args.dataset, data_split=args.data_split, 
+                                                            by_time=args.by_time, val_method=args.val_method, 
+                                                            fold_num=args.fold_num, prepro=args.prepro)
+    features_map, num_features = map_features(args.dataset)
 
     if args.val_method in ['tloo', 'loo', 'tfo']:
         fn = 1
@@ -273,7 +277,7 @@ if __name__ == '__main__':
         fn = args.fold_num
 
     fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
-    test_dataset = FMData(f'./data/{src}/{src}.test.libfm', features_map)
+    test_dataset = FMData(f'./data/{args.dataset}/{args.dataset}.test.libfm', features_map)
     test_loader = data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
     # predict test set and calculate KPI
@@ -281,8 +285,8 @@ if __name__ == '__main__':
     max_i_num = 100
     for fold in range(fn):
         print(f'Start train validation [{fold + 1}]......')
-        train_dataset = FMData(f'./data/{src}/{src}.train.libfm.{fold}', features_map)
-        valid_dataset = FMData(f'./data/{src}/{src}.valid.libfm.{fold}', features_map)
+        train_dataset = FMData(f'./data/{args.dataset}/{args.dataset}.train.libfm.{fold}', features_map)
+        valid_dataset = FMData(f'./data/{args.dataset}/{args.dataset}.valid.libfm.{fold}', features_map)
 
         train_loader = data.DataLoader(train_dataset, drop_last=True, batch_size=args.batch_size, 
                                        shuffle=True, num_workers=4)
@@ -373,7 +377,7 @@ if __name__ == '__main__':
                 if args.out:
                     if not os.path.exists(model_path):
                         os.mkdir(model_path)
-                    torch.save(model, f'{model_path}{src}/{args.model}.pt.{fold}')
+                    torch.save(model, f'{model_path}{args.dataset}/{args.model}.pt.{fold}')
         print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
 
         test_u_is = defaultdict(set)
