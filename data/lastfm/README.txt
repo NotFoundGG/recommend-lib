@@ -154,11 +154,11 @@ References
 Credits
 -------
 
-   This dataset was built by Ignacio Fernï¿½ndez-Tobï¿½as with the collaboration of Ivï¿½n Cantador and Alejandro Bellogï¿½n, 
+   This dataset was built by Ignacio Fernández-Tobías with the collaboration of Iván Cantador and Alejandro Bellogín, 
    members of the Information Retrieval group at Universidad Autonoma de Madrid (http://ir.ii.uam.es)
 
 -------   
 Contact
 -------
 
-   Ivï¿½n Cantador, ivan [dot] cantador [at] uam [dot] es
+   Iván Cantador, ivan [dot] cantador [at] uam [dot] es

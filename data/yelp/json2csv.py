@@ -3,6 +3,8 @@
 """
 import argparse
 import collections
+from collections.abc import MutableMapping
+
 import csv
 # import simplejson as json
 import json
@@ -41,9 +43,9 @@ def get_column_names(line_contents, parent_key=''):
     These will be the column names for the eventual csv file.
     """
     column_names = []
-    for k, v in line_contents.iteritems():
+    for k, v in line_contents.items():
         column_name = "{0}.{1}".format(parent_key, k) if parent_key else k
-        if isinstance(v, collections.MutableMapping):
+        if isinstance(v, MutableMapping):
             column_names.extend(
                     get_column_names(v, column_name).items()
                     )
@@ -86,9 +88,7 @@ def get_row(line_contents, column_names):
                         line_contents,
                         column_name,
                         )
-        if isinstance(line_value, unicode):
-            row.append('{0}'.format(line_value.encode('utf-8')))
-        elif line_value is not None:
+        if line_value is not None:
             row.append('{0}'.format(line_value))
         else:
             row.append('')

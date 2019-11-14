@@ -31,12 +31,6 @@
 
 3. Before running, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `macOS` or `.pyd` file for `WindowsOS` used for further import.
 
-4. After download Yelp dataset into specific folder `data/yelp/`, you should run the following code firstly.
-
-    ```
-    json2csv.py yelp_academic_dataset_review.json
-    ```
-
 ## The requirements are as follows:
 
 * python==3.7
