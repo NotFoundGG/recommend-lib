@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 17:25:26
+@LastEditTime: 2019-11-14 22:10:13
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -24,81 +24,6 @@ from scipy.sparse import csr_matrix, coo_matrix
 from scipy.io import mmread
 
 from sklearn.model_selection import train_test_split, KFold
-
-def get_superset_of_column_names_from_file(json_file_path):
-    """Read in the json dataset file and return the superset of column names."""
-    column_names = set()
-    with open(json_file_path) as fin:
-        for line in fin:
-            line_contents = json.loads(line)
-            column_names.update(
-                    set(get_column_names(line_contents).keys())
-                    )
-    return column_names
-
-def get_column_names(line_contents, parent_key=''):
-    """Return a list of flattened key names given a dict.
-    Example:
-        line_contents = {
-            'a': {
-                'b': 2,
-                'c': 3,
-                },
-        }
-        will return: ['a.b', 'a.c']
-    These will be the column names for the eventual csv file.
-    """
-    column_names = []
-    for k, v in line_contents.items():
-        column_name = "{0}.{1}".format(parent_key, k) if parent_key else k
-        if isinstance(v, MutableMapping):
-            column_names.extend(
-                    get_column_names(v, column_name).items()
-                    )
-        else:
-            column_names.append((column_name, v))
-    return dict(column_names)
-
-def get_nested_value(d, key):
-    """Return a dictionary item given a dictionary `d` and a flattened key from `get_column_names`.
-    
-    Example:
-        d = {
-            'a': {
-                'b': 2,
-                'c': 3,
-                },
-        }
-        key = 'a.b'
-        will return: 2
-    
-    """
-    if '.' not in key:
-        if d:
-            if key not in d:
-                return None
-        else:
-            return None
-        return d[key]
-    base_key, sub_key = key.split('.', 1)
-    if base_key not in d:
-        return None
-    sub_dict = d[base_key]
-    return get_nested_value(sub_dict, sub_key)
-
-def get_row(line_contents, column_names):
-    """Return a csv compatible row given column names and a dict."""
-    row = []
-    for column_name in column_names:
-        line_value = get_nested_value(
-                        line_contents,
-                        column_name,
-                        )
-        if line_value is not None:
-            row.append('{0}'.format(line_value))
-        else:
-            row.append('')
-    return row
 
 ########################################################################################################
 def load_rate(src='ml-100k', prepro='origin'):
