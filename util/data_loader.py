@@ -123,7 +123,8 @@ def load_rate(src='ml-100k', prepro='origin'):
     elif src == 'lastfm':
         pass
     elif src == 'bx':
-        pass
+        df = pd.read_csv(f'./data/{src}/BX-Book-Ratings.csv', delimiter=";", encoding="latin1")
+        df.rename(columns={'User-ID': 'user', 'ISBN': 'item', 'Book-Rating': 'rating'}, inplace=True)
     elif src == 'pinterest':
         pass
     elif src == 'amazon-cloth':
@@ -141,19 +142,14 @@ def load_rate(src='ml-100k', prepro='origin'):
         pass
     elif src == 'yelp':
         json_file_path = f'./data/{src}/yelp_academic_dataset_review.json'
-        csv_file_path = json_file_path.replace('json', 'csv')
-        if os.path.exists(csv_file_path):
-            df = pd.read_csv(csv_file_path)
-        else:
-            column_names = list(get_superset_of_column_names_from_file(json_file_path))
-            with open(csv_file_path, 'w+') as fout:
-                csv_file = csv.writer(fout)
-                csv_file.writerow(column_names)
-                with open(json_file_path) as fin:
-                    for line in fin:
-                        line_contents = json.loads(line)
-                        csv_file.writerow(get_row(line_contents, column_names))
-            print('Finish convert file from json to csv......')
+        prime = []
+        for line in open(json_file_path, 'r', encoding='UTF-8'):
+            val = json.loads(line)
+            prime.append([val['user_id'], val['business_id'], val['stars'], val['date']])
+        df = pd.DataFrame(prime, columns=['user', 'item', 'rating', 'timestamp'])
+        df['timestamp'] = pd.to_datetime(df.timestamp)
+        del prime
+        gc.collect()
 
     elif src == 'citeulike':
         pass
