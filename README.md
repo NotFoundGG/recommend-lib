@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-14 11:39:54
+ * @LastEditTime: 2019-11-18 17:55:02
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -57,7 +57,7 @@
 | NeuFM | NFMRecommender.py | Neural Factorization Machines for Sparse Predictive Analytics |
 | NeuMF | NCFRecommender.py | Neural Collaborative Filtering |
 | Item2Vec |  | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
-| AutoRec |  | AutoRec: Autoencoders Meet Collaborative Filtering |
+| AutoRec | AutoRecommender.py | AutoRec: Autoencoders Meet Collaborative Filtering |
 <!-- | eALS |  | https://arxiv.org/pdf/1708.05024.pdf | -->
 
 

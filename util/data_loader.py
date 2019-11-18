@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 22:10:13
+@LastEditTime: 2019-11-18 17:09:37
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -753,6 +753,108 @@ class BPRData(data.Dataset):
         item_i = features[idx][1]
         item_j = features[idx][2] if self.is_training else features[idx][1]
         return user, item_i, item_j
+
+# AutoRec:AutoEncoder DataProcess
+class AutoRecData(object):
+    def __init__(self, a, b, src='ml-100k', prepro='origin', data_split='fo', by_time=1, val_method='cv', 
+                 fold_num=5, test_size=.2):
+        self.a = a
+        self.b = b
+        df = load_rate(src, prepro)
+        df['user'] = pd.Categorical(df.user).codes
+        df['item'] = pd.Categorical(df.item).codes
+        self.user_num = df.user.nunique()
+        self.item_num = df.item.nunique()
+        self.rating_num = df.rating.size
+
+        self.data_split = data_split
+        self.by_time = by_time
+        self.val_method = val_method
+        self.fold_num = fold_num
+        self.test_size = test_size
+
+        self._process(df)
+
+    def _process(self, df):
+        user_train_set = set()
+        user_test_set = set()
+        item_train_set = set()
+        item_test_set = set()
+
+        R = np.zeros((self.user_num, self.item_num))
+        mask_R = np.zeros((self.user_num, self.item_num))
+        C = np.ones((self.user_num, self.item_num)) * self.b
+
+        train_R = np.zeros((self.user_num, self.item_num))
+        test_R = np.zeros((self.user_num, self.item_num))
+
+        train_mask_R = np.zeros((self.user_num, self.item_num))
+        test_mask_R = np.zeros((self.user_num, self.item_num))
+
+        # TODO train test shuffle split
+        # random_perm_idx = np.random.permutation(self.rating_num)
+        # train_idx = random_perm_idx[0:int(self.rating_num*train_size)]
+        # test_idx = random_perm_idx[int(self.rating_num*train_size):]
+        if self.data_split == 'fo':
+            if self.by_time:
+                df = df.sample(frac=1)
+                df = df.sort_values(['timestamp']).reset_index(drop=True)
+
+                split_idx = int(np.ceil(len(df) * 0.8))
+                train, test = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
+            else:
+                train, test = train_test_split(df, test_size=self.test_size)
+        elif self.data_split == 'loo':
+            if self.by_time:
+                df = df.sample(frac=1)
+                df = df.sort_values(['timestamp']).reset_index(drop=True)
+                df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+                train, test = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
+                del train['rank_latest'], test['rank_latest']
+            else:
+                test = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+                test_key = test[['user', 'item']].copy()
+                train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+
+        num_train_ratings = len(train)
+        num_test_ratings = len(test)
+
+        for _, row in df.iterrows():
+            user, item, rating = row['user'], row['item'], row['rating']
+            R[user, item] = int(rating)
+            mask_R[user, item] = 1
+            C[user,item] = self.a
+
+        '''train'''
+        for _, row in train.iterrows():
+            user, item, rating = row['user'], row['item'], row['rating']
+            train_R[user, item] = int(rating)
+            train_mask_R[user, item] = 1
+
+            user_train_set.add(user)
+            item_train_set.add(item)
+
+        for _, row in test.iterrows():
+            user, item, rating = row['user'], row['item'], row['rating']
+            test_R[user, item] = int(rating)
+            test_mask_R[user, item] = 1
+
+            user_test_set.add(user)
+            item_test_set.add(item)
+
+        self.R = R
+        self.mask_R = mask_R
+        self.C = C
+        self.train_R = train_R
+        self.train_mask_R = train_mask_R
+        self.test_R = test_R
+        self.test_mask_R = test_mask_R
+        self.num_train_ratings = num_train_ratings
+        self.num_test_ratings = num_test_ratings
+        self.user_train_set = user_train_set
+        self.item_train_set = item_train_set
+        self.user_test_set = user_test_set
+        self.item_test_set = item_test_set      
 
 if __name__ == '__main__':
     # load negative sampling dataset for NCF BPR, take ml-100k as an example
