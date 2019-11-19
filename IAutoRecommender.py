@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-18 11:32:54
 @LastEditors: Yudi
-@LastEditTime: 2019-11-18 17:50:49
+@LastEditTime: 2019-11-19 11:46:33
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: AutoEncoder for Recommender system
@@ -11,13 +11,16 @@
 import os
 import time
 import math
+import random
 import argparse
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
 from util.data_loader import AutoRecData
+from util.metrics import precision_at_k, recall_at_k, hr_at_k, map_at_k, mrr_at_k, ndcg_at_k
 
 class AutoRec(object):
     def __init__(self, sess, args, num_users, num_items, R, mask_R, C, train_R, train_mask_R, 
@@ -170,7 +173,7 @@ class AutoRec(object):
                     if self.test_mask_R[user,item] == 1: # exist in test set
                         Estimated_R[user,item] = 3
             
-            pre_numerator = np.multiply((Estimated_R - self.test_R), self.test_mask_R)
+            pre_numerator = np.multiply((Estimated_R - self.test_R), self.test_mask_R)  # choose non-zero in test set
             numerator = np.sum(np.square(pre_numerator))
             denominator = self.num_test_ratings
             RMSE = np.sqrt(numerator / float(denominator))
@@ -217,7 +220,7 @@ if __name__ == '__main__':
     # specific setting for autorec
     parser.add_argument('--hidden_neuron', type=int, default=500)
     parser.add_argument('--lambda_value', type=float, default=1)
-    parser.add_argument('--train_epoch', type=int, default=100)
+    parser.add_argument('--train_epoch', type=int, default=100) # 2000
     parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--optimizer_method', choices=['Adam','RMSProp'], default='Adam')
     parser.add_argument('--grad_clip', type=bool, default=False)
@@ -246,5 +249,51 @@ if __name__ == '__main__':
         algo.run()
 
     # calculate kpi
+    fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
+    item_pool = list(range(data.item_num))
+    max_i_num = 100
+    test_u_is = defaultdict(set)
+    for key, val in data.ur_test.items():
+        if len(val) < max_i_num:
+            cands_num = max_i_num - len(val)
+            sub_item_pool = set(item_pool) - set(data.ur_train[key])
+            cands = random.sample(sub_item_pool, cands_num)
+            test_u_is[key] = set(data.ur_test[key]) | set(cands)
+        else:
+            test_u_is[key] = set(random.sample(val, max_i_num))
+        test_u_is[key] = list(test_u_is[key])
+
+    preds = {}
+    for u in test_u_is.keys():
+        pred_rates = [algo.prediction[u, i] for i in test_u_is[u]]
+        rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
+        top_n = np.array(test_u_is[u])[rec_idx]
+        preds[u] = list(top_n)
+        preds[u] = [1 if e in data.ur_test[u] else 0 for e in preds[u]]
+
+    # calculate metrics
+    precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
+    fnl_precision.append(precision_k)
+
+    recall_k = np.mean([recall_at_k(r, len(data.ur_test[u]), args.topk) for u, r in preds.items()])
+    fnl_recall.append(recall_k)
+
+    map_k = map_at_k(list(preds.values()))
+    fnl_map.append(map_k)
+
+    ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
+    fnl_ndcg.append(ndcg_k)
+
+    hr_k = hr_at_k(list(preds.values()), list(preds.keys()), data.ur_test)
+    fnl_hr.append(hr_k)
     
-    
+    mrr_k = mrr_at_k(list(preds.values()))
+    fnl_mrr.append(mrr_k) 
+
+    print('---------------------------------')
+    print(f'Precision@{args.topk}: {np.mean(fnl_precision)}')
+    print(f'Recall@{args.topk}: {np.mean(fnl_recall)}')
+    print(f'MAP@{args.topk}: {np.mean(fnl_map)}')
+    print(f'NDCG@{args.topk}: {np.mean(fnl_ndcg)}')
+    print(f'HR@{args.topk}: {np.mean(fnl_hr)}')
+    print(f'MRR@{args.topk}: {np.mean(fnl_mrr)}')

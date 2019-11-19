@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-18 17:09:37
+@LastEditTime: 2019-11-19 11:50:03
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -776,6 +776,9 @@ class AutoRecData(object):
         self._process(df)
 
     def _process(self, df):
+        train_R_list, train_mask_R_list, num_train_ratings_list = [], [], []
+        user_train_set_list, item_train_set_list = [], []
+
         user_train_set = set()
         user_test_set = set()
         item_train_set = set()
@@ -816,6 +819,11 @@ class AutoRecData(object):
                 test_key = test[['user', 'item']].copy()
                 train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
 
+        ur_test, ur_train = defaultdict(list), defaultdict(list)
+        for _, row in train.iterrows():
+            user, item = row['user'], row['item']
+            ur_train[user].append(item)
+
         num_train_ratings = len(train)
         num_test_ratings = len(test)
 
@@ -842,6 +850,8 @@ class AutoRecData(object):
             user_test_set.add(user)
             item_test_set.add(item)
 
+            ur_test[user].append(item)
+
         self.R = R
         self.mask_R = mask_R
         self.C = C
@@ -854,7 +864,10 @@ class AutoRecData(object):
         self.user_train_set = user_train_set
         self.item_train_set = item_train_set
         self.user_test_set = user_test_set
-        self.item_test_set = item_test_set      
+        self.item_test_set = item_test_set
+
+        self.ur_train = ur_train
+        self.ur_test = ur_test
 
 if __name__ == '__main__':
     # load negative sampling dataset for NCF BPR, take ml-100k as an example
