@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-18 11:32:54
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 11:46:33
+@LastEditTime: 2019-11-19 13:37:48
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: AutoEncoder for Recommender system
@@ -182,7 +182,7 @@ class AutoRec(object):
             print ('Total cost = {:.2f}'.format(cost), 
                    'RMSE = {:.5f}'.format(RMSE),
                    'Elapsed time : {:.2f} sec'.format(time.time() - start_time))
-            print ('-' * 50)
+            print ('=' * 50)
         
             self.prediction = Estimated_R
 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
     # specific setting for autorec
     parser.add_argument('--hidden_neuron', type=int, default=500)
     parser.add_argument('--lambda_value', type=float, default=1)
-    parser.add_argument('--train_epoch', type=int, default=100) # 2000
+    parser.add_argument('--train_epoch', type=int, default=2000)
     parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--optimizer_method', choices=['Adam','RMSProp'], default='Adam')
     parser.add_argument('--grad_clip', type=bool, default=False)
@@ -230,23 +230,19 @@ if __name__ == '__main__':
                         default=50,
                         help="decay the learning rate for each n epochs")
     parser.add_argument('--random_seed', type=int, default=2019)
-    parser.add_argument('--display_step', type=int, default=10)
+    parser.add_argument('--display_step', type=int, default=200)
     args = parser.parse_args()
 
     tf.compat.v1.set_random_seed(args.random_seed)
     np.random.seed(args.random_seed)
 
+    if args.val_method in ['tfo', 'tloo', 'lo']:
+        fn = 1
+    else:
+        fn = args.fold_num
+
     data = AutoRecData(1, 0, args.dataset, args.prepro, args.data_split, 
                        args.by_time, args.val_method, args.fold_num)
-
-    config = tf.compat.v1.ConfigProto()
-    # config.gpu_options.allow_growth=True
-    with tf.compat.v1.Session(config=config) as sess:
-        algo = AutoRec(sess, args, data.user_num, data.item_num, data.R, data.mask_R, data.C, 
-                       data.train_R, data.train_mask_R, data.test_R, data.test_mask_R, 
-                       data.num_train_ratings,data.num_test_ratings, data.user_train_set, 
-                       data.item_train_set, data.user_test_set, data.item_test_set)
-        algo.run()
 
     # calculate kpi
     fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
@@ -263,32 +259,45 @@ if __name__ == '__main__':
             test_u_is[key] = set(random.sample(val, max_i_num))
         test_u_is[key] = list(test_u_is[key])
 
-    preds = {}
-    for u in test_u_is.keys():
-        pred_rates = [algo.prediction[u, i] for i in test_u_is[u]]
-        rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
-        top_n = np.array(test_u_is[u])[rec_idx]
-        preds[u] = list(top_n)
-        preds[u] = [1 if e in data.ur_test[u] else 0 for e in preds[u]]
-
-    # calculate metrics
-    precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
-    fnl_precision.append(precision_k)
-
-    recall_k = np.mean([recall_at_k(r, len(data.ur_test[u]), args.topk) for u, r in preds.items()])
-    fnl_recall.append(recall_k)
-
-    map_k = map_at_k(list(preds.values()))
-    fnl_map.append(map_k)
-
-    ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
-    fnl_ndcg.append(ndcg_k)
-
-    hr_k = hr_at_k(list(preds.values()), list(preds.keys()), data.ur_test)
-    fnl_hr.append(hr_k)
+    for fold in range(fn):
+        print(f'Start Validation [{fold + 1}]......')
+        config = tf.compat.v1.ConfigProto()
+        # config.gpu_options.allow_growth=True
+        with tf.compat.v1.Session(config=config) as sess:
+            algo = AutoRec(sess, args, data.user_num, data.item_num, data.R, data.mask_R, data.C, 
+                        data.train_R[fold], data.train_mask_R[fold], data.test_R, data.test_mask_R, 
+                        data.num_train_ratings[fold], data.num_test_ratings, data.user_train_set[fold], 
+                        data.item_train_set[fold], data.user_test_set, data.item_test_set)
+            algo.run()
     
-    mrr_k = mrr_at_k(list(preds.values()))
-    fnl_mrr.append(mrr_k) 
+        preds = {}
+        for u in test_u_is.keys():
+            pred_rates = [algo.prediction[u, i] for i in test_u_is[u]]
+            rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
+            top_n = np.array(test_u_is[u])[rec_idx]
+            preds[u] = list(top_n)
+            preds[u] = [1 if e in data.ur_test[u] else 0 for e in preds[u]]
+
+        # calculate metrics
+        precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
+        fnl_precision.append(precision_k)
+
+        recall_k = np.mean([recall_at_k(r, len(data.ur_test[u]), args.topk) for u, r in preds.items()])
+        fnl_recall.append(recall_k)
+
+        map_k = map_at_k(list(preds.values()))
+        fnl_map.append(map_k)
+
+        ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
+        fnl_ndcg.append(ndcg_k)
+
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), data.ur_test)
+        fnl_hr.append(hr_k)
+        
+        mrr_k = mrr_at_k(list(preds.values()))
+        fnl_mrr.append(mrr_k) 
+
+        tf.compat.v1.reset_default_graph()
 
     print('---------------------------------')
     print(f'Precision@{args.topk}: {np.mean(fnl_precision)}')

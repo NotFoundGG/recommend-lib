@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 11:50:03
+@LastEditTime: 2019-11-19 12:08:07
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -794,10 +794,6 @@ class AutoRecData(object):
         train_mask_R = np.zeros((self.user_num, self.item_num))
         test_mask_R = np.zeros((self.user_num, self.item_num))
 
-        # TODO train test shuffle split
-        # random_perm_idx = np.random.permutation(self.rating_num)
-        # train_idx = random_perm_idx[0:int(self.rating_num*train_size)]
-        # test_idx = random_perm_idx[int(self.rating_num*train_size):]
         if self.data_split == 'fo':
             if self.by_time:
                 df = df.sample(frac=1)
@@ -823,9 +819,31 @@ class AutoRecData(object):
         for _, row in train.iterrows():
             user, item = row['user'], row['item']
             ur_train[user].append(item)
+        
+        train_list = []
+        if self.val_method == 'cv':
+            kf = KFold(n_splits=self.fold_num, shuffle=False, random_state=2019)
+            for train_index, _ in kf.split(train):
+                train_list.append(train.iloc[train_index, :].copy())
+        elif self.val_method == 'loo':
+            val_key = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)[['user', 'item']].copy()
+            train_list.append(train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy())
+        elif self.val_method == 'tloo':
+            train = train.sample(frac=1)
+            train = train.sort_values(['timestamp']).reset_index(drop=True)
 
-        num_train_ratings = len(train)
-        num_test_ratings = len(test)
+            train['rank_latest'] = train.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            new_train_set = train[train['rank_latest'] > 1].copy()
+            del new_train_set['rank_latest']
+            train_list.append(new_train_set)
+        elif self.val_method == 'tfo':
+            train = train.sample(frac=1)
+            train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+            split_idx = int(np.ceil(len(train) * 0.9))
+            train_list.append(train.iloc[:split_idx, :].copy())
+        else:
+            raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
 
         for _, row in df.iterrows():
             user, item, rating = row['user'], row['item'], row['rating']
@@ -834,14 +852,24 @@ class AutoRecData(object):
             C[user,item] = self.a
 
         '''train'''
-        for _, row in train.iterrows():
-            user, item, rating = row['user'], row['item'], row['rating']
-            train_R[user, item] = int(rating)
-            train_mask_R[user, item] = 1
+        for sub_train in train_list:
+            num_train_ratings = len(sub_train)
+            num_train_ratings_list.append(num_train_ratings)
+            for _, row in sub_train.iterrows():
+                user, item, rating = row['user'], row['item'], row['rating']
+                train_R[user, item] = int(rating)
+                train_mask_R[user, item] = 1
 
-            user_train_set.add(user)
-            item_train_set.add(item)
+                user_train_set.add(user)
+                item_train_set.add(item)
 
+            train_R_list.append(train_R)
+            train_mask_R_list.append(train_mask_R)
+            user_train_set_list.append(user_train_set)
+            item_train_set_list.append(item_train_set)
+
+        '''test'''
+        num_test_ratings = len(test)
         for _, row in test.iterrows():
             user, item, rating = row['user'], row['item'], row['rating']
             test_R[user, item] = int(rating)
@@ -855,14 +883,14 @@ class AutoRecData(object):
         self.R = R
         self.mask_R = mask_R
         self.C = C
-        self.train_R = train_R
-        self.train_mask_R = train_mask_R
+        self.train_R = train_R_list
+        self.train_mask_R = train_mask_R_list
         self.test_R = test_R
         self.test_mask_R = test_mask_R
-        self.num_train_ratings = num_train_ratings
+        self.num_train_ratings = num_train_ratings_list
         self.num_test_ratings = num_test_ratings
-        self.user_train_set = user_train_set
-        self.item_train_set = item_train_set
+        self.user_train_set = user_train_set_list
+        self.item_train_set = item_train_set_list
         self.user_test_set = user_test_set
         self.item_test_set = item_test_set
 
