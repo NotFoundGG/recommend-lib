@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-19 10:49:47
+ * @LastEditTime: 2019-11-19 15:49:11
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -56,7 +56,7 @@
 | FM | NFMRecommender.py | Factorization Machines |
 | NeuFM | NFMRecommender.py | Neural Factorization Machines for Sparse Predictive Analytics |
 | NeuMF | NCFRecommender.py | Neural Collaborative Filtering |
-| Item2Vec |  | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
+| Item2Vec | Item2VecRecommender.py | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
 | AutoRec | IAutoRecommender.py | AutoRec: Autoencoders Meet Collaborative Filtering |
 <!-- | eALS |  | https://arxiv.org/pdf/1708.05024.pdf | -->
 
@@ -66,16 +66,9 @@
 Default set top-K number to 10, you can change top-K number by modifying `topk` argument.
 
 ```
-python MostPopRecommender.py
 python ItemKNNRecommender.py --sim_method=pearson
 python UserKNNRecommnder.py --sim_method=jaccard
-python SLiMRecommender.py
 python MFRecommender.py --biased=False
-python PureSVDRecommender.py --factors=150
-python SVDppRecommender.py
-python WRMFRecommender.py
-python BPRMFRecommender.py --factor_num=16
-python NCFRecommender.py --batch_size=256 --factor_num=16
 python NFMRecommender.py --batch_size=128 --lr=0.05 --model=FM
 ```
 

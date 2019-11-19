@@ -2,15 +2,15 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 12:08:07
+@LastEditTime: 2019-11-19 16:47:28
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
 '''
 import os
 import gc
-import csv
 import json
+import pickle
 import random
 from collections import defaultdict
 from collections.abc import MutableMapping
@@ -18,10 +18,9 @@ from collections.abc import MutableMapping
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+
 import torch
 import torch.utils.data as data
-from scipy.sparse import csr_matrix, coo_matrix
-from scipy.io import mmread
 
 from sklearn.model_selection import train_test_split, KFold
 
@@ -896,6 +895,82 @@ class AutoRecData(object):
 
         self.ur_train = ur_train
         self.ur_test = ur_test
+
+# Item2Vec Data Process
+class BuildCorpus(object):
+    def __init__(self, corpus_list, idx, window=5, max_vocab=20000, unk='<UNK>', dataset='ml-100k'):
+        self.idx = idx
+        self.window = window
+        self.max_vocab = max_vocab
+        self.unk = unk
+        self.data_dir = f'./data/{dataset}/'
+
+        # build corpus
+        self.corpus = corpus_list[idx].groupby('user')['item'].apply(lambda x: x.values.tolist()).reset_index()
+
+    def run(self):
+        self.build(self.corpus, self.max_vocab)
+        self.convert(self.corpus)
+
+    def skipgram(self, sentence, i):
+        iword = sentence[i]
+        left = sentence[max(i - self.window, 0): i]
+        right = sentence[i + 1: i + 1 + self.window]
+        return iword, [self.unk for _ in range(self.window - len(left))] + \
+                        left + right + [self.unk for _ in range(self.window - len(right))]
+
+    def build(self, corpus, max_vocab=20000):
+        print('building vocab...')
+        self.wc = {self.unk : 1}
+        for _, row in corpus.iterrows():
+            sent = row['item']
+            for word in sent:
+                self.wc[word] = self.wc.get(word, 0) + 1
+
+        self.idx2word = [self.unk] + sorted(self.wc, key=self.wc.get, reverse=True)[:max_vocab - 1]
+        self.word2idx = {self.idx2word[idx]: idx for idx, _ in enumerate(self.idx2word)}
+        self.vocab = set([word for word in self.word2idx])
+
+        pickle.dump(self.wc, open(os.path.join(self.data_dir, f'wc.dat.{self.idx}'), 'wb'))
+        pickle.dump(self.vocab, open(os.path.join(self.data_dir, f'vocab.dat.{self.idx}'), 'wb'))
+        pickle.dump(self.idx2word, open(os.path.join(self.data_dir, f'idx2item.dat.{self.idx}'), 'wb'))
+        pickle.dump(self.word2idx, open(os.path.join(self.data_dir, f'item2idx.dat.{self.idx}'), 'wb'))
+        print('build done')
+
+    def convert(self, corpus):
+        print('converting corpus...')
+        data = []
+        for _, row in corpus.iterrows():
+            sent = []
+            for word in row['item']:
+                if word in self.vocab:
+                    sent.append(word)
+                else:
+                    sent.append(self.unk)
+            for i in range(len(sent)):
+                iword, owords = self.skipgram(sent, i)
+                data.append((self.word2idx[iword], [self.word2idx[oword] for oword in owords]))
+
+        pickle.dump(data, open(os.path.join(self.data_dir, f'train.i2v.dat.{self.idx}'), 'wb'))
+        print('conversion done')
+
+class PermutedSubsampledCorpus(data.Dataset):
+    def __init__(self, datapath, ws=None):
+        dt = pickle.load(open(datapath, 'rb'))
+        if ws is not None:
+            self.dt = []
+            for iword, owords in dt:
+                if random.random() > ws[iword]:
+                    self.dt.append((iword, owords))
+        else:
+            self.dt = dt
+
+    def __len__(self):
+        return len(self.dt)
+
+    def __getitem__(self, idx):
+        iword, owords = self.dt[idx]
+        return iword, np.array(owords)
 
 if __name__ == '__main__':
     # load negative sampling dataset for NCF BPR, take ml-100k as an example
