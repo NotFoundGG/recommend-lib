@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 16:47:28
+@LastEditTime: 2019-11-19 18:07:13
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -18,12 +18,10 @@ from collections.abc import MutableMapping
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+from sklearn.model_selection import train_test_split, KFold
 
 import torch
 import torch.utils.data as data
-
-from sklearn.model_selection import train_test_split, KFold
-
 ########################################################################################################
 def load_rate(src='ml-100k', prepro='origin'):
     if src == 'ml-100k':
@@ -58,7 +56,8 @@ def load_rate(src='ml-100k', prepro='origin'):
         df = pd.read_csv(f'./data/{src}/ratings_Electronics.csv', 
                          names=['user', 'item', 'rating', 'timestamp'])
     elif src == 'amazon-book':
-        pass
+        df = pd.read_csv(f'./data/{src}/ratings_Books.csv', 
+                         names=['user', 'item', 'rating', 'timestamp'], low_memory=False)
     elif src == 'amazon-music':
         df = pd.read_csv(f'./data/{src}/ratings_Digital_Music.csv', 
                          names=['user', 'item', 'rating', 'timestamp'])
@@ -74,9 +73,15 @@ def load_rate(src='ml-100k', prepro='origin'):
         df['timestamp'] = pd.to_datetime(df.timestamp)
         del prime
         gc.collect()
-
     elif src == 'citeulike':
-        pass
+        user = 0
+        dt = []
+        for line in open(f'./data/{src}/users.dat', 'r'):
+            val = line.split()
+            for item in val:
+                dt.append([user, item])
+            user += 1
+        df = pd.DataFrame(dt, columns=['user', 'item'])
     else:
         raise ValueError('Invalid Dataset Error')
 
