@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 18:07:13
+@LastEditTime: 2019-11-20 11:32:32
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -41,9 +41,25 @@ def load_rate(src='ml-100k', prepro='origin'):
         df.rename(columns={'userId':'user', 'movieId':'item'}, inplace=True)
         df = df.query('rating >= 4').reset_index(drop=True)
     elif src == 'netflix':
-        pass
+        df = pd.DataFrame()
+        cnt = 0
+        for f in os.listdir(f'./data/{src}/training_set/'):
+            cnt += 1
+            if not cnt % 5000:
+                print(f'Finish Process {cnt} file......')
+            txt_file = open(f'./data/{src}/training_set/{f}', 'r')
+            contents = txt_file.readlines()
+            item = contents[0].strip().split(':')[0]
+            for val in contents[1:]:
+                user, rating, timestamp = val.strip().split(',')
+                tmp = pd.DataFrame([[user, item, rating, timestamp]], 
+                                   columns=['user', 'item', 'rating', 'timestamp'])
+                df.append(tmp, ignore_index=True)
+            txt_file.close()
+        df['rating'] = df.rating.astype(float)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
     elif src == 'lastfm':
-        pass
+        pass # user_artists.dat
     elif src == 'bx':
         df = pd.read_csv(f'./data/{src}/BX-Book-Ratings.csv', delimiter=";", encoding="latin1")
         df.rename(columns={'User-ID': 'user', 'ISBN': 'item', 'Book-Rating': 'rating'}, inplace=True)
