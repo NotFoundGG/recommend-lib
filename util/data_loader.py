@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-20 11:32:32
+@LastEditTime: 2019-11-20 13:37:54
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -18,6 +18,7 @@ from collections.abc import MutableMapping
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+import scipy.io as sio
 from sklearn.model_selection import train_test_split, KFold
 
 import torch
@@ -78,7 +79,14 @@ def load_rate(src='ml-100k', prepro='origin'):
         df = pd.read_csv(f'./data/{src}/ratings_Digital_Music.csv', 
                          names=['user', 'item', 'rating', 'timestamp'])
     elif src == 'epinions':
-        pass
+        d = sio.loadmat(f'./data/{src}/rating_with_timestamp.mat')
+        prime = []
+        for val in d['rating_with_timestamp']:
+            user, item, rating, timestamp = val[0], val[1], val[3], val[5]
+            prime.append([user, item, rating, timestamp])
+        df = pd.DataFrame(prime, columns=['user', 'item', 'rating', 'timestamp'])
+        del prime
+        gc.collect()
     elif src == 'yelp':
         json_file_path = f'./data/{src}/yelp_academic_dataset_review.json'
         prime = []
