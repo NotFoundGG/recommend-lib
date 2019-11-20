@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:17:46
 @LastEditors: Yudi
-@LastEditTime: 2019-10-28 11:13:06
+@LastEditTime: 2019-11-20 14:51:59
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: 
@@ -28,6 +28,17 @@ else:
 
 __version__ = '1.0.0'
 
+here = path.abspath(path.dirname(__file__))
+# Get the long description from README.md
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
+# get the dependencies and installs
+with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
+    all_reqs = f.read().split('\n')
+
+install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
+
 ext = '.pyx' if USE_CYTHON else '.c'
 cmdclass = {}
 
@@ -35,16 +46,16 @@ ext = '.pyx' if USE_CYTHON else '.c'
 
 extensions = [
     Extension(
-        name='matrix_factorization',
-        sources=['matrix_factorization' + ext],
+        name='util.matrix_factorization',
+        sources=['util/matrix_factorization' + ext],
         include_dirs=[np.get_include()]),
     Extension(
-        name='slim',
-        sources=['slim' + ext],
+        name='util.slim',
+        sources=['util/slim' + ext],
         include_dirs=[np.get_include()]),
     Extension(
-        name='similarities', 
-        sources=['similarities' + ext], 
+        name='util.similarities', 
+        sources=['util/similarities' + ext], 
         include_dirs=[np.get_include()])
 ]
 
@@ -55,9 +66,20 @@ else:
     ext_modules = extensions
 
 setup(
-    name='fair-comparison',
+    name='daisy',
     author='Yu Di',
+    author_email='yudi_mars@126.com',
+    version=__version__,
+    description=('An item-ranking library for recommender systems.'),
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    url='http://amazingdd.github.io',
+    license='MIT',
+    keywords='recommender recommendation system item-rank',
+
     ext_modules=ext_modules,
+    cmdclass=cmdclass,
+    install_requires=install_requires,
 )
 
 # # python setup.py build_ext --inplace

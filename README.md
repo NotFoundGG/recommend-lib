@@ -2,13 +2,15 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-19 15:49:11
+ * @LastEditTime: 2019-11-20 14:39:07
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
  -->
 
-# fair-comparison-for-recommendation
+# Daisy
+
+## Overview
 
 1. you can also download experiment data from links below: 
     - [MovieLens 100K](https://grouplens.org/datasets/movielens/100k/)
@@ -27,9 +29,9 @@
     - [Amazon-Music](http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Digital_Music.csv)
     - [Yelp Challenge](https://kaggle.com/yelp-dataset/yelp-dataset)
 
-2. Item-Ranking recommendation algorithms reimplementation with pytorch, numpy and scipy.
+2. Item-Ranking recommendation algorithms reimplementation with pytorch, tensorflow, numpy and scipy.
 
-3. Before running, you need first run `python setup.py build_ext --inplace` in directory `util` to generate `.so` file for `macOS` or `.pyd` file for `WindowsOS` used for further import.
+3. Before running, you need first run `python setup.py build_ext --inplace` to generate `.so` file for `macOS` or `.pyd` file for `WindowsOS` used for further import.
 
 ## The requirements are as follows:
 
