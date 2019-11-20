@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-20 13:37:54
+@LastEditTime: 2019-11-20 14:01:37
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -60,7 +60,9 @@ def load_rate(src='ml-100k', prepro='origin'):
         df['rating'] = df.rating.astype(float)
         df['timestamp'] = pd.to_datetime(df['timestamp'])
     elif src == 'lastfm':
-        pass # user_artists.dat
+        # user_artists.dat
+        df = pd.read_csv(f'./data/{src}/user_artists.dat', sep='\t')
+        df.rename(columns={'userID':'user', 'artistID':'item', 'weight':'rating'}, inplace=True)
     elif src == 'bx':
         df = pd.read_csv(f'./data/{src}/BX-Book-Ratings.csv', delimiter=";", encoding="latin1")
         df.rename(columns={'User-ID': 'user', 'ISBN': 'item', 'Book-Rating': 'rating'}, inplace=True)
