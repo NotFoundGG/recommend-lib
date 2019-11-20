@@ -10,7 +10,7 @@
 
 # Daisy
 
-### Overview
+## Overview
 
 Daisy is a Python toolkit that deal with rating prediction and item ranking issue.
 
@@ -42,7 +42,7 @@ The name DAISY (roughly :) ) stands for **D**i's f**AI**r comp**A**r**I**son for
 
 make sure you have a **CUDA** enviroment to accelarate since these deep-learning models could be based on it.
 
-### List of all algorithms
+## List of all algorithms
 
 | Algo. | File | Refer. |
 | ------ | ------ | ------ |
@@ -62,8 +62,7 @@ make sure you have a **CUDA** enviroment to accelarate since these deep-learning
 | AutoRec | IAutoRecommender.py | AutoRec: Autoencoders Meet Collaborative Filtering |
 <!-- | eALS |  | https://arxiv.org/pdf/1708.05024.pdf | -->
 
-
-### Examples to run:
+## Examples to run:
 
 Default set top-K number to 10, you can change top-K number by modifying `topk` argument.
 
@@ -80,7 +79,9 @@ Help message will give you more detail description for arguments, For example:
 python NFMRecommender.py --help
 ```
 
-### Benchmarks
+---
+
+## Benchmarks
 
 Here are the Precision, Recall, MAP, NDCG, MRR of various algorithms on a 5-fold cross validation procedure. The code for generating these tables is shown in each Recommender.py.
 
@@ -102,7 +103,9 @@ Here are the Precision, Recall, MAP, NDCG, MRR of various algorithms on a 5-fold
 | FM | 0.209 | 0.451 | 0.119 | -->
 <!-- | NeuFM(deprecated) | 0.214  | 0.453 | 0.119 | -->
 
-### License
+---
+
+## License
 
 Here is a Bibtex entry if you ever need to cite Daisy in a research paper (please keep us posted, we would love to know if Daisy was helpful to you):
 
@@ -115,7 +118,7 @@ year = {2020}
 }
 ```
 
-### Development Status
+## Development Status
 
 Starting from version 1.0.0, we will only provide bugfixes. No new algorithms will be considered.
 
