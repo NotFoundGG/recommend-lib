@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-20 14:01:37
+@LastEditTime: 2019-11-21 10:55:17
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -929,19 +929,14 @@ class AutoRecData(object):
 
 # Item2Vec Data Process
 class BuildCorpus(object):
-    def __init__(self, corpus_list, idx, window=5, max_vocab=20000, unk='<UNK>', dataset='ml-100k'):
-        self.idx = idx
+    def __init__(self, corpus_df, window=5, max_vocab=20000, unk='<UNK>', dataset='ml-100k'):
         self.window = window
         self.max_vocab = max_vocab
         self.unk = unk
         self.data_dir = f'./data/{dataset}/'
 
         # build corpus
-        self.corpus = corpus_list[idx].groupby('user')['item'].apply(lambda x: x.values.tolist()).reset_index()
-
-    def run(self):
-        self.build(self.corpus, self.max_vocab)
-        self.convert(self.corpus)
+        self.corpus = corpus_df.groupby('user')['item'].apply(lambda x: x.values.tolist()).reset_index()
 
     def skipgram(self, sentence, i):
         iword = sentence[i]
@@ -950,7 +945,9 @@ class BuildCorpus(object):
         return iword, [self.unk for _ in range(self.window - len(left))] + \
                         left + right + [self.unk for _ in range(self.window - len(right))]
 
-    def build(self, corpus, max_vocab=20000):
+    def build(self):
+        max_vocab = self.max_vocab
+        corpus = self.corpus
         print('building vocab...')
         self.wc = {self.unk : 1}
         for _, row in corpus.iterrows():
@@ -962,15 +959,16 @@ class BuildCorpus(object):
         self.word2idx = {self.idx2word[idx]: idx for idx, _ in enumerate(self.idx2word)}
         self.vocab = set([word for word in self.word2idx])
 
-        pickle.dump(self.wc, open(os.path.join(self.data_dir, f'wc.dat.{self.idx}'), 'wb'))
-        pickle.dump(self.vocab, open(os.path.join(self.data_dir, f'vocab.dat.{self.idx}'), 'wb'))
-        pickle.dump(self.idx2word, open(os.path.join(self.data_dir, f'idx2item.dat.{self.idx}'), 'wb'))
-        pickle.dump(self.word2idx, open(os.path.join(self.data_dir, f'item2idx.dat.{self.idx}'), 'wb'))
+        pickle.dump(self.wc, open(os.path.join(self.data_dir, f'wc.dat'), 'wb'))
+        pickle.dump(self.vocab, open(os.path.join(self.data_dir, f'vocab.dat'), 'wb'))
+        pickle.dump(self.idx2word, open(os.path.join(self.data_dir, f'idx2item.dat'), 'wb'))
+        pickle.dump(self.word2idx, open(os.path.join(self.data_dir, f'item2idx.dat'), 'wb'))
         print('build done')
 
-    def convert(self, corpus):
-        print('converting corpus...')
+    def convert(self, corpus_train_df, idx):
+        print('converting train corpus...')
         data = []
+        corpus = corpus_train_df.groupby('user')['item'].apply(lambda x: x.values.tolist()).reset_index()
         for _, row in corpus.iterrows():
             sent = []
             for word in row['item']:
@@ -982,7 +980,7 @@ class BuildCorpus(object):
                 iword, owords = self.skipgram(sent, i)
                 data.append((self.word2idx[iword], [self.word2idx[oword] for oword in owords]))
 
-        pickle.dump(data, open(os.path.join(self.data_dir, f'train.i2v.dat.{self.idx}'), 'wb'))
+        pickle.dump(data, open(os.path.join(self.data_dir, f'train.i2v.dat.{idx}'), 'wb'))
         print('conversion done')
 
 class PermutedSubsampledCorpus(data.Dataset):

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-15 13:45:40
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 16:58:23
+@LastEditTime: 2019-11-22 10:24:30
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: 
@@ -96,6 +96,14 @@ class SGNS(nn.Module):
                                                                              self.n_negs).sum(2).mean(1)
         return -(oloss + nloss).mean()
 
+def cos_sim(a, b):
+    numerator = np.multiply(a, b).sum()
+    denomitor = np.linalg.norm(a) * np.linalg.norm(b)
+    if denomitor == 0:
+        return 0
+    else:
+        return numerator / denomitor
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--prepro', 
@@ -120,7 +128,7 @@ if __name__ == '__main__':
                         help='select dataset')
     parser.add_argument('--val_method', 
                         type=str, 
-                        default='cv', 
+                        default='tloo', 
                         help='validation method, options: cv, tfo, loo, tloo')
     parser.add_argument('--fold_num', 
                         type=int, 
@@ -147,6 +155,10 @@ if __name__ == '__main__':
     # convert to int code for easy look
     df['user'] = pd.Categorical(df.user).codes
     df['item'] = pd.Categorical(df.item).codes
+
+    pre = BuildCorpus(df, args.window, args.max_vocab, args.unk, args.dataset)
+    pre.build()
+
     if args.data_split == 'fo':
         if args.by_time:
             df = df.sample(frac=1)
@@ -170,6 +182,27 @@ if __name__ == '__main__':
             train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
     else:
         raise ValueError('Invalid data_split value, expect: loo, fo')
+
+    # build average vector for certain user
+    train_ur = defaultdict(set)
+    for _, row in train.iterrows():
+        train_ur[int(row['user'])].add(int(row['item']))
+    test_ur = defaultdict(set)
+    for _, row in test.iterrows():
+        test_ur[int(row['user'])].add(int(row['item']))
+
+    test_u_is = defaultdict(set)
+    max_i_num = 100
+    item_pool = list(range(df.item.nunique()))
+    for key, val in test_ur.items():
+        # build candidates set
+        if len(val) < max_i_num:
+            cands_num = max_i_num - len(val)
+            sub_item_pool = list(set(item_pool) - train_ur[key] - test_ur[key])
+            cands = random.sample(sub_item_pool, cands_num)
+            test_u_is[key] = list(test_ur[key] | set(cands))
+        else:
+            test_u_is[key] = list(random.sample(val, max_i_num))
 
     train_list, val_list = [], []
     if args.val_method == 'cv':
@@ -215,22 +248,20 @@ if __name__ == '__main__':
     fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
     for fold in range(fn):
         print(f'Start Validation [{fold + 1}]......')
-        
-        pre = BuildCorpus(train_list, fold, args.window, args.max_vocab, args.unk, args.dataset)
-        pre.run()
+        pre.convert(train_list[fold], fold)
 
-        idx2word = pickle.load(open(os.path.join(args.data_dir, args.dataset, f'idx2item.dat.{fold}'), 'rb'))
-        wc = pickle.load(open(os.path.join(args.data_dir, args.dataset, f'wc.dat.{fold}'), 'rb'))
-        wf = np.array([wc[word] for word in idx2word])
+        idx2item = pickle.load(open(os.path.join(args.data_dir, args.dataset, f'idx2item.dat'), 'rb'))
+        wc = pickle.load(open(os.path.join(args.data_dir, args.dataset, f'wc.dat'), 'rb'))
+        wf = np.array([wc[word] for word in idx2item])
         wf = wf / wf.sum()
         ws = 1 - np.sqrt(args.ss_t / wf)
         ws = np.clip(ws, 0, 1)
-        vocab_size = len(idx2word)
+        vocab_size = len(idx2item)
         weights = wf if args.weights else None
         if not os.path.isdir(args.save_dir):
             os.mkdir(args.save_dir)
         model = Item2Vec(vocab_size=vocab_size, embedding_size=args.e_dim)
-        modelpath = os.path.join(args.save_dir, args.dataset, f'{args.name}.pt')
+        modelpath = os.path.join(args.save_dir, args.dataset, f'{args.name}.pt.{fold}')
         sgns = SGNS(embedding=model, vocab_size=vocab_size, n_negs=args.n_negs, weights=weights)
         if os.path.isfile(modelpath) and args.conti:
             sgns.load_state_dict(torch.load(modelpath))
@@ -259,7 +290,46 @@ if __name__ == '__main__':
         torch.save(sgns.state_dict(), os.path.join(args.save_dir, args.dataset, f'{args.name}.pt.{fold}'))
         torch.save(optimizer.state_dict(), os.path.join(args.save_dir, args.dataset, f'{args.name}.optimizer.pt.{fold}'))
 
-        item2idx = pickle.load(open(os.path.join(args.data_dir, args.dataset, f'item2idx.dat.{fold}'), 'rb'))
+        item2idx = pickle.load(open(os.path.join(args.data_dir, args.dataset, f'item2idx.dat'), 'rb'))
         item2vec = {key: idx2vec[val, :] for key, val in item2idx.items()}
 
-        # TODO calculate KPI 
+        # calculate KPI
+        print('---------------------------------')
+        print('Start Calculating KPI......')
+        test_uservec, preds = dict(), dict()
+        for u in test_ur.keys():
+            # calculate test user vector for similarity
+            test_uservec[u] = np.array([item2vec[i] for i in test_ur[u]]).mean(axis=0)
+            test_u_is[u] = list(test_u_is[u])
+            pred_rates = [cos_sim(test_uservec[u], item2vec[i]) for i in test_u_is[u]]
+            rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
+            top_n = np.array(test_u_is[u])[rec_idx]
+            preds[u] = list(top_n)
+        for u in preds.keys():
+            preds[u] = [1 if e in test_ur[u] else 0 for e in preds[u]]
+
+        precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
+        fnl_precision.append(precision_k)
+
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
+        fnl_recall.append(recall_k)
+
+        map_k = map_at_k(list(preds.values()))
+        fnl_map.append(map_k)
+
+        ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
+        fnl_ndcg.append(ndcg_k)
+
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
+        fnl_hr.append(hr_k)
+        
+        mrr_k = mrr_at_k(list(preds.values()))
+        fnl_mrr.append(mrr_k) 
+            
+    print('---------------------------------')
+    print(f'Precision@{args.topk}: {np.mean(fnl_precision)}')
+    print(f'Recall@{args.topk}: {np.mean(fnl_recall)}')
+    print(f'MAP@{args.topk}: {np.mean(fnl_map)}')
+    print(f'NDCG@{args.topk}: {np.mean(fnl_ndcg)}')
+    print(f'HR@{args.topk}: {np.mean(fnl_hr)}')
+    print(f'MRR@{args.topk}: {np.mean(fnl_mrr)}')
