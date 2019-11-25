@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:54:41
+@LastEditTime: 2019-11-25 11:10:03
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -320,7 +320,8 @@ if __name__ == '__main__':
         # model.cuda()
         if torch.cuda.is_available():
             model.cuda()
-        model.cpu()
+        else:
+            model.cpu()
         # model.to(device)
 
         if opt == 'Adagrad':
