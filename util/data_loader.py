@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-21 10:55:17
+@LastEditTime: 2019-11-25 11:42:08
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -66,6 +66,7 @@ def load_rate(src='ml-100k', prepro='origin'):
     elif src == 'bx':
         df = pd.read_csv(f'./data/{src}/BX-Book-Ratings.csv', delimiter=";", encoding="latin1")
         df.rename(columns={'User-ID': 'user', 'ISBN': 'item', 'Book-Rating': 'rating'}, inplace=True)
+        # remove < 1 
     elif src == 'pinterest':
         pass
     elif src == 'amazon-cloth':
@@ -142,6 +143,10 @@ def load_rate(src='ml-100k', prepro='origin'):
     else:
         raise ValueError('Invalid dataset preprocess type, origin/5core/10core expected')
 
+# BPR-FM prepare
+def load_bprfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
+    df = load_rate(src, prepro)
+
 # NeuFM/FM prepare
 def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
     df = load_rate(src, prepro)
@@ -150,6 +155,13 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_
         # rating >=4 interaction =1
         df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
 
+        df['user'] = pd.Categorical(df.user).codes
+        df['item'] = pd.Categorical(df.item).codes
+        user_tag_info = df[['user']].copy()
+        item_tag_info = df[['item']].copy()
+        user_tag_info = user_tag_info.drop_duplicates()
+        item_tag_info = item_tag_info.drop_duplicates()
+    else:
         df['user'] = pd.Categorical(df.user).codes
         df['item'] = pd.Categorical(df.item).codes
         user_tag_info = df[['user']].copy()
@@ -226,7 +238,7 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_
         train = train.sort_values(['timestamp']).reset_index(drop=True)
 
         split_idx = int(np.ceil(len(train) * 0.9))
-        train_set, val_set = train.iloc[:split_idx, :].copy(), train_set.iloc[split_idx:, :].copy()
+        train_set, val_set = train.iloc[:split_idx, :].copy(), train.iloc[split_idx:, :].copy()
         del train_set['timestamp'], val_set['timestamp']
 
         train_list.append(train_set)
