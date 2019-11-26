@@ -2,7 +2,7 @@
  * @Author: Yu Di
  * @Date: 2019-09-29 10:33:55
  * @LastEditors: Yudi
- * @LastEditTime: 2019-11-20 15:25:55
+ * @LastEditTime: 2019-11-25 17:34:31
  * @Company: Cardinal Operation
  * @Email: yudi@shanshu.ai
  * @Description: 
@@ -55,12 +55,13 @@ make sure you have a **CUDA** enviroment to accelarate since these deep-learning
 | SVD++ | SVDppRecommender.py | Factorization meets the neighborhood: a multifaceted collaborative filtering model |
 | WRMF | WRMFRecommender.py | Collaborative Filtering for Implicit Feedback Datasets |
 | BPR-MF | BPRMFRecommender.py | BPR: Bayesian Personalized Ranking from Implicit Feedback |
+| BPR-FM | BPRFMRecommender.py | BPR: Bayesian Personalized Ranking from Implicit Feedback |
 | FM | NFMRecommender.py | Factorization Machines |
 | NeuFM | NFMRecommender.py | Neural Factorization Machines for Sparse Predictive Analytics |
 | NeuMF | NCFRecommender.py | Neural Collaborative Filtering |
 | Item2Vec | Item2VecRecommender.py | Item2Vec: Neural Item Embedding for Collaborative Filtering  |
 | AutoRec | IAutoRecommender.py | AutoRec: Autoencoders Meet Collaborative Filtering |
-<!-- | eALS |  | https://arxiv.org/pdf/1708.05024.pdf | -->
+<!-- | eALS | EALSRecommender.py | Fast Matrix Factorization for Online Recommendation with Implicit Feedback | -->
 
 ## Examples to run:
 

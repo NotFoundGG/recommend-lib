@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-25 11:42:08
+@LastEditTime: 2019-11-25 17:32:07
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -146,6 +146,109 @@ def load_rate(src='ml-100k', prepro='origin'):
 # BPR-FM prepare
 def load_bprfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
     df = load_rate(src, prepro)
+
+    df['user'] = pd.Categorical(df.user).codes
+    df['item'] = pd.Categorical(df.item).codes
+    user_tag_info = df[['user']].copy()
+    item_tag_info = df[['item']].copy()
+    user_tag_info = user_tag_info.drop_duplicates()
+    item_tag_info = item_tag_info.drop_duplicates()
+
+    feat_idx_dict = {}
+    idx = 0
+    for col in df.columns:
+        if col not in ['rating', 'timestamp']:
+            feat_idx_dict[col] = idx
+            idx = idx + df[col].max() + 1
+    print('Finish build category index dictionary......')
+    features_map = {}
+    cnt = 0
+    for user in df.user.unique():
+        features_map[cnt] = feat_idx_dict['user'] + user
+        cnt += 1
+    for item in df.item.unique():
+        features_map[cnt] = feat_idx_dict['item'] + item
+        cnt += 1
+    print(f'number of features: {cnt}')
+
+    if data_split == 'fo':
+        if by_time:
+            df = df.sample(frac=1)
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            
+            split_idx = int(np.ceil(len(df) * 0.8)) # for train test
+            train, test = df.iloc[:split_idx, :].copy(), df.iloc[split_idx:, :].copy()
+        else:
+            train, test = train_test_split(df, test_size=0.2)
+    elif data_split == 'loo':
+        if by_time:
+            df = df.sample(frac=1)
+            df = df.sort_values(['timestamp']).reset_index(drop=True)
+            df['rank_latest'] = df.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+            train, test = df[df['rank_latest'] > 1].copy(), df[df['rank_latest'] == 1].copy()
+            train.drop(['rank_latest'], axis=1, inplace=True)
+            test.drop(['rank_latest'], axis=1, inplace=True)
+        else:
+            test = df.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+            test_key = test[['user', 'item']].copy()
+            train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
+    else:
+        raise ValueError('Invalid data_split value, expect: loo, fo')
+
+    test = test.reset_index(drop=True)
+    test.drop(['timestamp'], axis=1, inplace=True)
+
+    train_list, val_list = [], []
+    if val_method == 'cv':
+        kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
+        for train_index, val_index in kf.split(train):
+            train_set, val_set = train.iloc[train_index, :].copy(), train.iloc[val_index, :].copy()
+            del train_set['timestamp'], val_set['timestamp']
+
+            train_list.append(train_set)
+            val_list.append(val_set)
+    elif val_method == 'loo':
+        val_set = train.groupby(['user']).apply(pd.DataFrame.sample, n=1).reset_index(drop=True)
+        val_key = val_set[['user', 'item']].copy()
+        train_set = train.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(val_key)).reset_index().copy()
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    elif val_method == 'tloo':
+        train = train.sample(frac=1)
+        train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+        train['rank_latest'] = train.groupby(['user'])['timestamp'].rank(method='first', ascending=False)
+        train_set = train[train['rank_latest'] > 1].copy()
+        val_set = train[train['rank_latest'] == 1].copy()
+        del train_set['rank_latest'], val_set['rank_latest']
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    elif val_method == 'tfo':
+        train = train.sample(frac=1)
+        train = train.sort_values(['timestamp']).reset_index(drop=True)
+
+        split_idx = int(np.ceil(len(train) * 0.9))
+        train_set, val_set = train.iloc[:split_idx, :].copy(), train.iloc[split_idx:, :].copy()
+        del train_set['timestamp'], val_set['timestamp']
+
+        train_list.append(train_set)
+        val_list.append(val_set)
+    else:
+        raise ValueError('Invalid val_method value, expect: cv, loo, tloo, tfo')
+    
+    test_user_set, test_item_set = test['user'].unique().tolist(), test['item'].unique().tolist()
+    ui = test[['user', 'item']].copy()
+    u_is = defaultdict(list)
+    for u in test_user_set:
+        u_is[u] = ui.loc[ui.user==u, 'item'].values.tolist()
+
+    gc.collect()
+    
+    return features_map, train_list, val_list, feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is
 
 # NeuFM/FM prepare
 def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_num=5, prepro='origin'):
@@ -451,6 +554,61 @@ def map_features(src='ml-100k'):
 
     return features, len(features)
 
+class BPRFMData(data.Dataset):
+    def __init__(self, df, feat_idx_dict, feature_map, num_item, num_ng=0, is_training=None):
+        super(BPRFMData, self).__init__()
+        self.feat_idx_dict = feat_idx_dict
+        self.feature_map = feature_map
+        self.features = []
+        self.feature_values = []
+        self.num_ng = num_ng
+        self.num_item = num_item
+        self.is_training = is_training
+
+        train_mat = set()
+        for _, row in df.iterrows():
+            train_mat.add((row['user'], row['item']))
+        for col in feat_idx_dict.keys():
+            df[col] = df[col].agg(lambda x: x + feat_idx_dict[col])
+
+        self.train_mat = train_mat
+        cols = [col for col in df.columns if col not in ['rating', 'timestamp']]
+        self.cols = cols
+
+        for _, row in df.iterrows():
+            raw = [row[col] for col in cols]
+            self.features.append([np.array([feature_map[item] for item in raw], dtype=np.int64)])
+            self.feature_values.append([np.array([1 for _ in raw], dtype=np.float32)])
+
+    def ng_sample(self):
+        assert self.is_training, 'no need to sampling when testing'
+        self.features_fill = []
+        self.feature_values_fill = []
+        for x in self.features:
+            u, _ = x[0]
+            for _ in range(self.num_ng):
+                j = np.random.randint(self.num_item)
+                while (u, j) in self.train_mat:
+                    j = np.random.randint(self.num_item)
+                j += self.feat_idx_dict['item']
+                y = np.array([u, self.feature_map[j]], dtype=np.int64)
+                self.features_fill.append([x[0], y])
+                self.feature_values_fill.append([np.array([1 for _ in self.cols], dtype=np.float32), 
+                                                 np.array([1 for _ in self.cols], dtype=np.float32)])
+
+    def __len__(self):
+        return self.num_ng * len(self.features) if self.is_training else len(self.features)
+
+    def __getitem__(self, idx):
+        features = self.features_fill if self.is_training else self.features
+        feature_values = self.feature_values_fill if self.is_training else self.feature_values
+        features_i = features[idx][0]
+        feature_values_i = feature_values[idx][0]
+        features_j = features[idx][1] if self.is_training else features[idx][0]
+        feature_values_j = feature_values[idx][1] if self.is_training else feature_values[idx][0]
+
+        return features_i, feature_values_i, features_j, feature_values_j
+
 class FMData(data.Dataset):
     ''' Construct the FM pytorch dataset. '''
     def __init__(self, file, feature_map, loss_type='square_loss'):
@@ -488,6 +646,41 @@ class FMData(data.Dataset):
         features = self.features[idx]
         feature_values = self.feature_values[idx]
         return features, feature_values, label
+
+class BPRData(data.Dataset):
+    def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
+        super(BPRData, self).__init__()
+        ''' 
+        Note that the labels are only useful when training, we thus 
+        add them in the ng_sample() function.
+		'''
+        self.features = features
+        self.num_item = num_item
+        self.train_mat = train_mat
+        self.num_ng = num_ng
+        self.is_training = is_training
+
+    def ng_sample(self):
+        assert self.is_training, 'no need to sampling when testing'
+
+        self.features_fill = []
+        for x in self.features:
+            u, i = x[0], x[1]
+            for _ in range(self.num_ng):
+                j = np.random.randint(self.num_item)
+                while (u, j) in self.train_mat:
+                    j = np.random.randint(self.num_item)
+                self.features_fill.append([u, i, j])
+
+    def __len__(self):
+        return self.num_ng * len(self.features) if self.is_training else len(self.features)
+    
+    def __getitem__(self, idx):
+        features = self.features_fill if self.is_training else self.features
+        user = features[idx][0]
+        item_i = features[idx][1]
+        item_j = features[idx][2] if self.is_training else features[idx][1]
+        return user, item_i, item_j
 
 # SLIM data loader 
 class SlimData(object):
@@ -760,41 +953,6 @@ class NCFData(data.Dataset):
         item = features[idx][1]
         label = labels[idx]
         return user, item, label
-
-class BPRData(data.Dataset):
-    def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
-        super(BPRData, self).__init__()
-        ''' 
-        Note that the labels are only useful when training, we thus 
-        add them in the ng_sample() function.
-		'''
-        self.features = features
-        self.num_item = num_item
-        self.train_mat = train_mat
-        self.num_ng = num_ng
-        self.is_training = is_training
-
-    def ng_sample(self):
-        assert self.is_training, 'no need to sampling when testing'
-
-        self.features_fill = []
-        for x in self.features:
-            u, i = x[0], x[1]
-            for _ in range(self.num_ng):
-                j = np.random.randint(self.num_item)
-                while (u, j) in self.train_mat:
-                    j = np.random.randint(self.num_item)
-                self.features_fill.append([u, i, j])
-
-    def __len__(self):
-        return self.num_ng * len(self.features) if self.is_training else len(self.features)
-    
-    def __getitem__(self, idx):
-        features = self.features_fill if self.is_training else self.features
-        user = features[idx][0]
-        item_i = features[idx][1]
-        item_j = features[idx][2] if self.is_training else features[idx][1]
-        return user, item_i, item_j
 
 # AutoRec:AutoEncoder DataProcess
 class AutoRecData(object):
