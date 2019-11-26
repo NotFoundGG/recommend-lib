@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-18 11:32:54
 @LastEditors: Yudi
-@LastEditTime: 2019-11-19 13:37:48
+@LastEditTime: 2019-11-26 14:06:16
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: AutoEncoder for Recommender system
@@ -249,12 +249,12 @@ if __name__ == '__main__':
     item_pool = list(range(data.item_num))
     max_i_num = 100
     test_u_is = defaultdict(set)
-    for key, val in data.ur_test.items():
+    for key, val in data.test_ur.items():
         if len(val) < max_i_num:
             cands_num = max_i_num - len(val)
-            sub_item_pool = set(item_pool) - set(data.ur_train[key])
+            sub_item_pool = set(item_pool) - set(data.train_ur[key])
             cands = random.sample(sub_item_pool, cands_num)
-            test_u_is[key] = set(data.ur_test[key]) | set(cands)
+            test_u_is[key] = set(data.test_ur[key]) | set(cands)
         else:
             test_u_is[key] = set(random.sample(val, max_i_num))
         test_u_is[key] = list(test_u_is[key])
@@ -276,13 +276,13 @@ if __name__ == '__main__':
             rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
             top_n = np.array(test_u_is[u])[rec_idx]
             preds[u] = list(top_n)
-            preds[u] = [1 if e in data.ur_test[u] else 0 for e in preds[u]]
+            preds[u] = [1 if e in data.test_ur[u] else 0 for e in preds[u]]
 
         # calculate metrics
         precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(data.ur_test[u]), args.topk) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(data.test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
@@ -291,7 +291,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), data.ur_test)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), data.test_ur)
         fnl_hr.append(hr_k)
         
         mrr_k = mrr_at_k(list(preds.values()))

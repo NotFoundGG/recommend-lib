@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-25 11:10:03
+@LastEditTime: 2019-11-26 14:27:24
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -233,7 +233,7 @@ if __name__ == '__main__':
                         type=str, 
                         default='square_loss', 
                         help='square_loss or log_loss')
-    parser.add_argument('--top_k', 
+    parser.add_argument('--topk', 
                         type=str, 
                         default=10, 
                         help='Top K number')
@@ -266,9 +266,11 @@ if __name__ == '__main__':
 
     ### prepare dataset ###
     feat_idx_dict, user_tag_info, item_tag_info,  \
-    test_user_set, test_item_set, ground_truth = load_libfm(args.dataset, data_split=args.data_split, 
-                                                            by_time=args.by_time, val_method=args.val_method, 
-                                                            fold_num=args.fold_num, prepro=args.prepro)
+    test_user_set, test_item_set, test_ur = load_libfm(args.dataset, data_split=args.data_split, 
+                                                       by_time=args.by_time, val_method=args.val_method, 
+                                                       fold_num=args.fold_num, prepro=args.prepro)
+    num_item = len(item_tag_info)
+    item_pool = list(range(num_item))
     features_map, num_features = map_features(args.dataset)
 
     if args.val_method in ['tloo', 'loo', 'tfo']:
@@ -281,7 +283,6 @@ if __name__ == '__main__':
     test_loader = data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
     # predict test set and calculate KPI
-    top_k = args.top_k
     max_i_num = 100
     for fold in range(fn):
         print(f'Start train validation [{fold + 1}]......')
@@ -382,7 +383,7 @@ if __name__ == '__main__':
         print('End. Best epoch {:03d}: Test_RMSE is {:.3f}'.format(best_epoch, best_rmse))
 
         test_u_is = defaultdict(set)
-        for key, val in ground_truth.items():
+        for key, val in test_ur.items():
             test_u_is[key] = set(val)
 
         preds = {}
@@ -390,9 +391,9 @@ if __name__ == '__main__':
         for u in test_user_set:
             if len(test_u_is[u]) < max_i_num:
             # construct candidates set
-                actual_i_list = ground_truth[u]
-                cands_num = max_i_num - len(actual_i_list)
-                cands = random.sample(test_item_set, cands_num)
+                cands_num = max_i_num - len(test_ur[u])
+                sub_item_pool = set(item_pool) - set(test_ur[u])
+                cands = random.sample(sub_item_pool, cands_num)
                 test_u_is[u] = test_u_is[u] | set(cands)
             else:
                 test_u_is[u] = set(random.sample(test_u_is[u], max_i_num))
@@ -425,27 +426,27 @@ if __name__ == '__main__':
                 prediction = model(features, feature_values)
                 prediction = prediction.clamp(min=-1.0, max=1.0)
 
-                _, indices = torch.topk(prediction, top_k)
+                _, indices = torch.topk(prediction, args.topk)
                 recommends = torch.take(torch.tensor(candidates), indices).cpu().numpy().tolist()
 
             preds[u] = recommends
-            preds[u] = [1 if e in ground_truth[u] else 0 for e in preds[u]]
+            preds[u] = [1 if e in test_ur[u] else 0 for e in preds[u]]
         
         
         # calculate metrics
-        precision_k = np.mean([precision_at_k(r, top_k) for r in preds.values()])
+        precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ground_truth[u]), top_k) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
         fnl_map.append(map_k)
 
-        ndcg_k = np.mean([ndcg_at_k(r, top_k) for r in preds.values()])
+        ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ground_truth)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
 
         mrr_k = mrr_at_k(list(preds.values()))
@@ -455,9 +456,9 @@ if __name__ == '__main__':
             os.remove(tmp_file_name)
 
     print('---------------------------------')
-    print(f'Precision@{args.top_k}: {np.mean(fnl_precision)}')
-    print(f'Recall@{args.top_k}: {np.mean(fnl_recall)}')
-    print(f'MAP@{args.top_k}: {np.mean(fnl_map)}')
-    print(f'NDCG@{args.top_k}: {np.mean(fnl_ndcg)}')
-    print(f'HR@{args.top_k}: {np.mean(fnl_hr)}')
-    print(f'MRR@{args.top_k}: {np.mean(fnl_mrr)}')
+    print(f'Precision@{args.topk}: {np.mean(fnl_precision)}')
+    print(f'Recall@{args.topk}: {np.mean(fnl_recall)}')
+    print(f'MAP@{args.topk}: {np.mean(fnl_map)}')
+    print(f'NDCG@{args.topk}: {np.mean(fnl_ndcg)}')
+    print(f'HR@{args.topk}: {np.mean(fnl_hr)}')
+    print(f'MRR@{args.topk}: {np.mean(fnl_mrr)}')

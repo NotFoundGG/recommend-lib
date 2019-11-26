@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 15:47:50
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 11:01:25
+@LastEditTime: 2019-11-26 14:45:55
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: WRMF
@@ -139,7 +139,7 @@ if __name__ == '__main__':
         for u in tqdm(val_user_set):
             if len(candidates[u]) < max_i_num:
                 actual_cands = set(candidates[u])
-                neg_item_pool = [i for i in range(dataset.train_list[fold].shape[1]) if i not in ur[u]]
+                neg_item_pool = set(range(dataset.train_list[fold].shape[1])) - set(ur[u])
                 neg_cands = random.sample(neg_item_pool, max_i_num - len(candidates[u])) 
                 cands = actual_cands | set(neg_cands)
             else:
@@ -156,14 +156,14 @@ if __name__ == '__main__':
         print('Start test kpi calculation......')
         # genereate top-N list for test user set
         test_user_set = dataset.test_users
-        ur = defaultdict(list) # u的实际交互item
+        test_ur = defaultdict(list) # u的实际交互item
         index = dataset.test.nonzero()
         for u, i in zip(index[0], index[1]):
-            ur[u].append(i)
+            test_ur[u].append(i)
         candidates = defaultdict(list)
         for u in test_user_set:
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0] # 未交互的物品
-            candidates[u] = list(set(unint) & set(ur[u])) # 未交互的物品中属于后续已交互的物品
+            candidates[u] = list(set(unint) & set(test_ur[u])) # 未交互的物品中属于后续已交互的物品
 
         max_i_num = 100
         preds = {}
@@ -171,7 +171,7 @@ if __name__ == '__main__':
         for u in tqdm(test_user_set):
             if len(candidates[u]) < max_i_num:
                 actual_cands = set(candidates[u])
-                neg_item_pool = [i for i in range(algo.num_item) if i not in ur[u]]
+                neg_item_pool = set(item_pool) - set(test_ur[u])
                 neg_cands = random.sample(neg_item_pool, max_i_num - len(candidates[u])) 
                 cands = actual_cands | set(neg_cands)
             else:
@@ -180,12 +180,12 @@ if __name__ == '__main__':
             rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
             preds[u] = list(np.array(list(cands))[rec_idx])
         for u in preds.keys():
-            preds[u] = [1 if i in ur[u] else 0 for i in preds[u]]
+            preds[u] = [1 if i in test_ur[u] else 0 for i in preds[u]]
     
         precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
@@ -194,7 +194,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
 
         mrr_k = mrr_at_k(list(preds.values()))

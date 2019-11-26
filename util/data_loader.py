@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-25 17:32:07
+@LastEditTime: 2019-11-26 14:05:36
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -455,19 +455,19 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_metho
                 test_data.append([u, int(i)])
 
     elif data_split == 'fo':
-        negatives = _negative_sampling(df)
         train, test = _split_fo(df, by_time)
 
         test_data = []
         ur = defaultdict(set) # ground_truth
         max_i_num = 100
+        item_pool = list(range(item_num))
         for u in test.user.unique():
-            pre_cands = negatives.query(f'user=={u}')['negative_samples'].values[0]  # 99 pre-candidates
             test_u_is = test.query(f'user=={u}')['item'].values.tolist()
             ur[u] = set(test_u_is)
             if len(test_u_is) < max_i_num:
                 cands_num = max_i_num - len(test_u_is)
-                candidates = random.sample(pre_cands, cands_num)
+                sub_item_pool = set(item_pool) - ur[u]
+                candidates = random.sample(sub_item_pool, cands_num)
                 test_u_is = list(set(candidates) | set(test_u_is))
             else:
                 test_u_is = random.sample(test_u_is, max_i_num)
@@ -1015,10 +1015,10 @@ class AutoRecData(object):
                 test_key = test[['user', 'item']].copy()
                 train = df.set_index(['user', 'item']).drop(pd.MultiIndex.from_frame(test_key)).reset_index().copy()
 
-        ur_test, ur_train = defaultdict(list), defaultdict(list)
+        test_ur, train_ur = defaultdict(list), defaultdict(list)
         for _, row in train.iterrows():
             user, item = row['user'], row['item']
-            ur_train[user].append(item)
+            train_ur[user].append(item)
         
         train_list = []
         if self.val_method == 'cv':
@@ -1078,7 +1078,7 @@ class AutoRecData(object):
             user_test_set.add(user)
             item_test_set.add(item)
 
-            ur_test[user].append(item)
+            test_ur[user].append(item)
 
         self.R = R
         self.mask_R = mask_R
@@ -1094,8 +1094,8 @@ class AutoRecData(object):
         self.user_test_set = user_test_set
         self.item_test_set = item_test_set
 
-        self.ur_train = ur_train
-        self.ur_test = ur_test
+        self.train_ur = train_ur
+        self.test_ur = test_ur
 
 # Item2Vec Data Process
 class BuildCorpus(object):

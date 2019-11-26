@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:40
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:49:05
+@LastEditTime: 2019-11-26 14:20:29
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Popularity-based recommender
@@ -146,17 +146,17 @@ if __name__ == '__main__':
         # get top-N list for test users
         preds = reco.predict(test_set)
         # get actual interaction info. of test users
-        ur = defaultdict(list)
+        test_ur = defaultdict(list)
         for u in test_set.user.unique():
-            ur[u] = test_set.loc[test_set.user==u, 'item'].values.tolist()
+            test_ur[u] = test_set.loc[test_set.user==u, 'item'].values.tolist()
         for u in preds.keys():
-            preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+            preds[u] = [1 if e in test_ur[u] else 0 for e in preds[u]]
 
         # calculate metrics
         precision_k = np.mean([precision_at_k(r, k) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ur[u]), k) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), k) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
@@ -165,7 +165,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, k) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
 
         mrr_k = mrr_at_k(list(preds.values()))

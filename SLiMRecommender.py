@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:58:04
+@LastEditTime: 2019-11-26 14:33:32
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
@@ -102,7 +102,7 @@ class SLIM(object):
         elif method == 'val':
             truth = self.val_ur[u]
         max_i_num = 100
-        if len(truth) < 100:
+        if len(truth) < max_i_num:
             cands_num = max_i_num - len(truth)
             sub_item_pool = set(range(self.data.num_item)) - user_item_set - set(truth)
             cands = random.sample(sub_item_pool, cands_num)
@@ -201,9 +201,9 @@ if __name__ == '__main__':
     # genereate top-N list for test user set
     test_user_set = list({ele[0] for ele in slim_data.test})
     # this ur is test set ground truth
-    ur = defaultdict(list)
+    test_ur = defaultdict(list)
     for ele in slim_data.test:
-        ur[ele[0]].append(ele[1])
+        test_ur[ele[0]].append(ele[1])
     # this val_ur_list is validation set ground_truth
     val_ur_list = []
     for validation in slim_data.val:
@@ -236,15 +236,15 @@ if __name__ == '__main__':
         
         # test predictions
         preds = {}
-        for u in ur.keys():
+        for u in test_ur.keys():
             preds[u] = recommend.recommendation[u] # recommendation didn't contain item in train set
         for u in preds.keys():
-            preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+            preds[u] = [1 if e in test_ur[u] else 0 for e in preds[u]]
         # calculate metrics
         precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
 
         mrr_k = mrr_at_k(list(preds.values()))

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-30 13:52:23
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:56:01
+@LastEditTime: 2019-11-26 14:30:18
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Pure SVD
@@ -78,7 +78,6 @@ if __name__ == '__main__':
         for u in val_user_set:
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0]
             candidates[u] = list(set(unint) & set(ur[u]))
-            # [i for i in unint if i in ur[u]]
         max_i_num = 100
         preds = {}
         # item_pool = list(set(dataset.val.nonzero()[1]))
@@ -102,14 +101,14 @@ if __name__ == '__main__':
 
         # genereate top-N list for test user set
         test_user_set = dataset.test_users
-        ur = defaultdict(list) # actually interacted items by user u
+        test_ur = defaultdict(list) # actually interacted items by user u
         index = dataset.test.nonzero()
         for u, i in zip(index[0], index[1]):
-            ur[u].append(i)
+            test_ur[u].append(i)
         candidates = defaultdict(list)
         for u in test_user_set:
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0] # 未交互的物品
-            candidates[u] = list(set(unint) & set(ur[u]))# 未交互的物品中属于后续已交互的物品
+            candidates[u] = list(set(unint) & set(test_ur[u]))# 未交互的物品中属于后续已交互的物品
 
         max_i_num = 100
         preds = {}
@@ -127,12 +126,12 @@ if __name__ == '__main__':
             rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
             preds[u] = list(np.array(list(cands))[rec_idx])
         for u in preds.keys():
-            preds[u] = [1 if i in ur[u] else 0 for i in preds[u]]
+            preds[u] = [1 if i in test_ur[u] else 0 for i in preds[u]]
 
         precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
@@ -141,7 +140,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
 
         mrr_k = mrr_at_k(list(preds.values()))

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:56:31
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:47:02
+@LastEditTime: 2019-11-26 13:56:57
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: BPR recommender
@@ -71,7 +71,7 @@ if __name__ == '__main__':
                         type=int, 
                         default=20, 
                         help='training epochs')
-    parser.add_argument('--top_k', 
+    parser.add_argument('--topk', 
                         type=int, 
                         default=10, 
                         help='compute metrics@K')
@@ -119,10 +119,10 @@ if __name__ == '__main__':
     cudnn.benchmark = True
 
     # load data
-    train_data_list, test_data, user_num, \
-    item_num, train_mat_list, ur, val_data_list = load_mat(args.dataset, data_split=args.data_split, 
-                                                           by_time=args.by_time, val_method=args.val_method, 
-                                                           fold_num=args.fold_num, prepro=args.prepro)
+    train_data_list, test_data, user_num, item_num, \
+    train_mat_list, test_ur, val_data_list = load_mat(args.dataset, data_split=args.data_split, 
+                                                      by_time=args.by_time, val_method=args.val_method, 
+                                                      fold_num=args.fold_num, prepro=args.prepro)
 
     if args.val_method in ['tloo', 'loo', 'tfo']:
         fn = 1
@@ -178,7 +178,7 @@ if __name__ == '__main__':
                 count += 1
 
             model.eval()
-            HR, NDCG = metric_eval(model, val_loader, args.top_k)
+            HR, NDCG = metric_eval(model, val_loader, args.topk)
 
             elapsed_time = time.time() - start_time
             print('The time elapse of epoch {:03d}'.format(epoch + 1) + ' is: ' + 
@@ -202,36 +202,36 @@ if __name__ == '__main__':
         for u in tqdm(test_u_is.keys()):
             test_u_is[u] = list(test_u_is[u])
             pred_rates = [model(torch.tensor(u), torch.tensor(i), torch.tensor(i))[0].cpu().detach().item() for i in test_u_is[u]]
-            rec_idx = np.argsort(pred_rates)[::-1][:args.top_k]
+            rec_idx = np.argsort(pred_rates)[::-1][:args.topk]
             top_n = np.array(test_u_is[u])[rec_idx]
             preds[u] = list(top_n)
 
         for u in preds.keys():
-            preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+            preds[u] = [1 if e in test_ur[u] else 0 for e in preds[u]]
 
         # calculate metrics
-        precision_k = np.mean([precision_at_k(r, args.top_k) for r in preds.values()])
+        precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ur[u]), args.top_k) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
         fnl_map.append(map_k)
 
-        ndcg_k = np.mean([ndcg_at_k(r, args.top_k) for r in preds.values()])
+        ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
 
         mrr_k = mrr_at_k(list(preds.values()))
         fnl_mrr.append(mrr_k)
 
     print('---------------------------------')
-    print(f'Precision@{args.top_k}: {np.mean(fnl_precision)}')
-    print(f'Recall@{args.top_k}: {np.mean(fnl_recall)}')
-    print(f'MAP@{args.top_k}: {np.mean(fnl_map)}')
-    print(f'NDCG@{args.top_k}: {np.mean(fnl_ndcg)}')
-    print(f'HR@{args.top_k}: {np.mean(fnl_hr)}')
-    print(f'MRR@{args.top_k}: {np.mean(fnl_mrr)}')
+    print(f'Precision@{args.topk}: {np.mean(fnl_precision)}')
+    print(f'Recall@{args.topk}: {np.mean(fnl_recall)}')
+    print(f'MAP@{args.topk}: {np.mean(fnl_map)}')
+    print(f'NDCG@{args.topk}: {np.mean(fnl_ndcg)}')
+    print(f'HR@{args.topk}: {np.mean(fnl_hr)}')
+    print(f'MRR@{args.topk}: {np.mean(fnl_mrr)}')

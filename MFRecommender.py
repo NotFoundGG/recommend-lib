@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-14 10:46:24
+@LastEditTime: 2019-11-26 14:19:12
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SVD recommender, also known as BiasMF
@@ -163,9 +163,9 @@ if __name__ == '__main__':
         if len(val) < max_i_num:
             cands_num = max_i_num - len(val)
             # remove item appear in train set towards certain user
-            sub_item_pool = [i for i in item_pool if i not in u_is[key]] 
+            sub_item_pool = set(item_pool) - set(u_is[key])
             cands = random.sample(sub_item_pool, cands_num)
-            test_u_is[key] = test_u_is[key] | set(cands)
+            test_u_is[key] = list(test_u_is[key] | set(cands))
         else:
             test_u_is[key] = random.sample(val, max_i_num)
 
@@ -216,17 +216,17 @@ if __name__ == '__main__':
             top_n = np.array(test_u_is[u])[rec_idx]
             preds[u] = list(top_n)
         # get actual interaction info. of test users
-        ur = defaultdict(list)
+        test_ur = defaultdict(list)
         for u in test_set.user.unique():
-            ur[u] = test_set.loc[test_set.user==u, 'item'].values.tolist()
+            test_ur[u] = test_set.loc[test_set.user==u, 'item'].values.tolist()
         for u in preds.keys():
-            preds[u] = [1 if e in ur[u] else 0 for e in preds[u]]
+            preds[u] = [1 if e in test_ur[u] else 0 for e in preds[u]]
 
         # calculate metrics
         precision_k = np.mean([precision_at_k(r, args.topk) for r in preds.values()])
         fnl_precision.append(precision_k)
 
-        recall_k = np.mean([recall_at_k(r, len(ur[u]), args.topk) for u, r in preds.items()])
+        recall_k = np.mean([recall_at_k(r, len(test_ur[u]), args.topk) for u, r in preds.items()])
         fnl_recall.append(recall_k)
 
         map_k = map_at_k(list(preds.values()))
@@ -235,7 +235,7 @@ if __name__ == '__main__':
         ndcg_k = np.mean([ndcg_at_k(r, args.topk) for r in preds.values()])
         fnl_ndcg.append(ndcg_k)
 
-        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), ur)
+        hr_k = hr_at_k(list(preds.values()), list(preds.keys()), test_ur)
         fnl_hr.append(hr_k)
         
         mrr_k = mrr_at_k(list(preds.values()))
