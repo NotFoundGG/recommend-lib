@@ -25,7 +25,7 @@ The name DAISY (roughly :) ) stands for **D**i's f**AI**r comp**A**r**I**son for
     - [Netflix Prize Data](https://archive.org/download/nf_prize_dataset.tar)
     - [Last.fm](https://grouplens.org/datasets/hetrec-2011/)
     - [Book Crossing](https://grouplens.org/datasets/book-crossing/)
-    - [Pinterest](https://data.mendeley.com/datasets/fs4k2zc5j5/3)
+    - [Pinterest](https://github.com/hexiangnan/neural_collaborative_filtering/tree/master/Data)
     - [Epinions](http://www.cse.msu.edu/~tangjili/trust.html)
     - [CiteULike](https://github.com/js05212/citeulike-a)
     - [Amazon-Book](http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Books.csv)
