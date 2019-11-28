@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-15 13:45:40
 @LastEditors: Yudi
-@LastEditTime: 2019-11-22 10:24:30
+@LastEditTime: 2019-11-28 16:11:00
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: 
@@ -192,7 +192,7 @@ if __name__ == '__main__':
         test_ur[int(row['user'])].add(int(row['item']))
 
     test_u_is = defaultdict(set)
-    max_i_num = 100
+    max_i_num = 1000
     item_pool = list(range(df.item.nunique()))
     for key, val in test_ur.items():
         # build candidates set

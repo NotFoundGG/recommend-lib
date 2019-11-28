@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-28 10:33:18
+@LastEditTime: 2019-11-28 17:34:24
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -317,6 +317,10 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_
     test = test.reset_index(drop=True)
     test.drop(['timestamp'], axis=1, inplace=True)
 
+    train_ur = defaultdict(set)
+    for _, row in train.iterrows():
+        train_ur[int(row['user'])].add(int(row['item']))
+
     train_list, val_list = [], []
     if val_method == 'cv':
         kf = KFold(n_splits=fold_num, shuffle=False, random_state=2019)
@@ -400,7 +404,7 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_
         file_obj.write(l)
     file_obj.close()
 
-    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is
+    return feat_idx_dict, user_tag_info, item_tag_info, test_user_set, test_item_set, u_is, train_ur
 
 ###############
 def _split_loo(ratings, by_time=1):
@@ -432,12 +436,12 @@ def _negative_sampling(ratings):
     interact_status = ratings.groupby('user')['item'].apply(set).reset_index()
     interact_status.rename(columns={'item': 'interacted_items'}, inplace=True)
     interact_status['negative_items'] = interact_status['interacted_items'].apply(lambda x: item_pool - x)
-    interact_status['negative_samples'] = interact_status['negative_items'].apply(lambda x: random.sample(x, 99))
+    interact_status['negative_samples'] = interact_status['negative_items'].apply(lambda x: random.sample(x, 999))
     
     return interact_status[['user', 'negative_samples']]
     
 
-def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_method='cv', fold_num=5, prepro='origin'):
+def load_mat(src='ml-100k', test_num=1000, data_split='loo', by_time=1, val_method='cv', fold_num=5, prepro='origin'):
     df = load_rate(src, prepro)
     # df.sort_values(by=['user', 'item', 'timestamp'], inplace=True)
     df['user'] = pd.Categorical(df.user).codes
@@ -466,17 +470,20 @@ def load_mat(src='ml-100k', test_num=100, data_split='loo', by_time=1, val_metho
 
     elif data_split == 'fo':
         train, test = _split_fo(df, by_time)
+        train_ur = defaultdict(set)
+        for _, row in train.iterrows():
+            train_ur[int(row['user'])].add(int(row['item']))
 
         test_data = []
         ur = defaultdict(set) # ground_truth
-        max_i_num = 100
+        max_i_num = 1000
         item_pool = list(range(item_num))
         for u in test.user.unique():
             test_u_is = test.query(f'user=={u}')['item'].values.tolist()
             ur[u] = set(test_u_is)
             if len(test_u_is) < max_i_num:
                 cands_num = max_i_num - len(test_u_is)
-                sub_item_pool = set(item_pool) - ur[u]
+                sub_item_pool = set(item_pool) - ur[u] - train_ur[u]
                 candidates = random.sample(sub_item_pool, cands_num)
                 test_u_is = list(set(candidates) | set(test_u_is))
             else:

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-18 11:32:54
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:06:16
+@LastEditTime: 2019-11-28 17:36:49
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: AutoEncoder for Recommender system
@@ -247,12 +247,12 @@ if __name__ == '__main__':
     # calculate kpi
     fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
     item_pool = list(range(data.item_num))
-    max_i_num = 100
+    max_i_num = 1000
     test_u_is = defaultdict(set)
     for key, val in data.test_ur.items():
         if len(val) < max_i_num:
             cands_num = max_i_num - len(val)
-            sub_item_pool = set(item_pool) - set(data.train_ur[key])
+            sub_item_pool = set(item_pool) - set(data.train_ur[key]) - set(data.test_ur[key])
             cands = random.sample(sub_item_pool, cands_num)
             test_u_is[key] = set(data.test_ur[key]) | set(cands)
         else:

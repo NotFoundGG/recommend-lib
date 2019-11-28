@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-30 15:27:46
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:27:24
+@LastEditTime: 2019-11-28 16:58:21
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Neural FM recommender
@@ -266,9 +266,9 @@ if __name__ == '__main__':
 
     ### prepare dataset ###
     feat_idx_dict, user_tag_info, item_tag_info,  \
-    test_user_set, test_item_set, test_ur = load_libfm(args.dataset, data_split=args.data_split, 
-                                                       by_time=args.by_time, val_method=args.val_method, 
-                                                       fold_num=args.fold_num, prepro=args.prepro)
+    test_user_set, test_item_set, test_ur, train_ur = load_libfm(args.dataset, data_split=args.data_split, 
+                                                                 by_time=args.by_time, val_method=args.val_method, 
+                                                                 fold_num=args.fold_num, prepro=args.prepro)
     num_item = len(item_tag_info)
     item_pool = list(range(num_item))
     features_map, num_features = map_features(args.dataset)
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     test_loader = data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
     # predict test set and calculate KPI
-    max_i_num = 100
+    max_i_num = 1000
     for fold in range(fn):
         print(f'Start train validation [{fold + 1}]......')
         train_dataset = FMData(f'./data/{args.dataset}/{args.dataset}.train.libfm.{fold}', features_map)
@@ -392,7 +392,7 @@ if __name__ == '__main__':
             if len(test_u_is[u]) < max_i_num:
             # construct candidates set
                 cands_num = max_i_num - len(test_ur[u])
-                sub_item_pool = set(item_pool) - set(test_ur[u])
+                sub_item_pool = set(item_pool) - set(test_ur[u]) - set(train_ur[u])
                 cands = random.sample(sub_item_pool, cands_num)
                 test_u_is[u] = test_u_is[u] | set(cands)
             else:

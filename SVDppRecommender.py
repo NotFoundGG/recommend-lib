@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 14:42:51
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:36:38
+@LastEditTime: 2019-11-28 16:25:43
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SVDpp recommender, also known as SVD++
@@ -154,7 +154,7 @@ if __name__ == '__main__':
         test_u_is[int(row['user'])].add(int(row['item']))
     item_pool = test_set.item.unique().tolist()
 
-    max_i_num = 100
+    max_i_num = 1000
     for key, val in test_u_is.items():
         if len(val) < max_i_num:
             cands_num = max_i_num - len(val)
@@ -179,11 +179,12 @@ if __name__ == '__main__':
         for _, row in val_set.iterrows():
             val_u_is[int(row['user'])].add(int(row['item']))
         # validation set candidates setting
-        max_i_num = 100
+        max_i_num = 1000
         for key, val in val_u_is.items():
             if len(val) < max_i_num:
                 cands_num = max_i_num - len(val)
-                cands = random.sample(item_pool, cands_num)
+                sub_item_pool = set(item_pool) - set(u_is[key])
+                cands = random.sample(sub_item_pool, cands_num)
                 val_u_is[key] = val_u_is[key] | set(cands)
             else:
                 val_u_is[key] = random.sample(val, max_i_num)

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-11-22 11:24:47
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 13:41:59
+@LastEditTime: 2019-11-28 17:38:36
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: BPR-FM
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     else:
         raise ValueError('Invalid val_method value')
 
-    max_i_num = 100
+    max_i_num = 1000
     item_pool = set(range(num_item))
     fnl_precision, fnl_recall, fnl_map, fnl_ndcg, fnl_hr, fnl_mrr = [], [], [], [], [], []
     for fold in range(fn):
@@ -240,7 +240,7 @@ if __name__ == '__main__':
             if len(test_u_is[u]) < max_i_num:
                 actual_i_list = test_ur[u]
                 cands_num = max_i_num - len(actual_i_list)
-                sub_item_pool = item_pool - train_ur[u]
+                sub_item_pool = item_pool - train_ur[u] - test_ur[u]
                 cands = random.sample(sub_item_pool, cands_num)
                 test_u_is[u] = test_u_is[u] | set(cands)
             else:

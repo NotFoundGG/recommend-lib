@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:54:50
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:38:05
+@LastEditTime: 2019-11-28 16:23:48
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: User-KNN recommender
@@ -157,7 +157,7 @@ if __name__ == '__main__':
         test_u_is[int(row['user'])].add(int(row['item']))
     item_pool = test_set.item.unique().tolist()
 
-    max_i_num = 100
+    max_i_num = 1000
     for key, val in test_u_is.items():
         if len(val) < max_i_num:
             cands_num = max_i_num - len(val)
@@ -182,12 +182,12 @@ if __name__ == '__main__':
         for _, row in val_set.iterrows():
             val_u_is[int(row['user'])].add(int(row['item']))
         # validation set candidates setting
-        max_i_num = 100
+        max_i_num = 1000
         for key, val in val_u_is.items():
             if len(val) < max_i_num:
                 cands_num = max_i_num - len(val)
                 # remove item appear in train set towards certain user
-                sub_item_pool = [i for i in item_pool if i not in u_is[key]] 
+                sub_item_pool = list(set(item_pool) - set(u_is[key]))
                 cands = random.sample(sub_item_pool, cands_num)
                 val_u_is[key] = val_u_is[key] | set(cands)
             else:

@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 10:56:31
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 13:56:57
+@LastEditTime: 2019-11-28 16:09:55
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: BPR recommender
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                         help='sample negative items for training')
     parser.add_argument('--test_num_ng', 
                         type=int, 
-                        default=99, 
+                        default=999, 
                         help='sample part of negative items for testing')
     parser.add_argument('--out', 
                         default=True, 

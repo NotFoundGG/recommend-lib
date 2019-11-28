@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-30 13:52:23
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:30:18
+@LastEditTime: 2019-11-28 16:51:00
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: Pure SVD
@@ -78,14 +78,14 @@ if __name__ == '__main__':
         for u in val_user_set:
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0]
             candidates[u] = list(set(unint) & set(ur[u]))
-        max_i_num = 100
+        max_i_num = 1000
         preds = {}
         # item_pool = list(set(dataset.val.nonzero()[1]))
         item_pool = list(range(dataset.item_num))
         for u in tqdm(val_user_set):
             if len(candidates[u]) < max_i_num:
                 actual_cands = set(candidates[u])
-                neg_item_pool = [i for i in range(dataset.train_list[fold].shape[1]) if i not in ur[u]]
+                neg_item_pool = list(set(range(dataset.train_list[fold].shape[1])) - set(ur[u]))
                 neg_cands = random.sample(neg_item_pool, max_i_num - len(candidates[u])) 
                 cands = actual_cands | set(neg_cands)
             else:
@@ -110,14 +110,14 @@ if __name__ == '__main__':
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0] # 未交互的物品
             candidates[u] = list(set(unint) & set(test_ur[u]))# 未交互的物品中属于后续已交互的物品
 
-        max_i_num = 100
+        max_i_num = 1000
         preds = {}
         # item_pool = list(set(dataset.test.nonzero()[1]))
         item_pool = list(range(dataset.item_num))
         for u in tqdm(test_user_set):
             if len(candidates[u]) < max_i_num:
                 actual_cands = set(candidates[u])
-                neg_item_pool = [i for i in range(dataset.train_list[fold].shape[1]) if i not in ur[u]]
+                neg_item_pool = list(set(range(dataset.train_list[fold].shape[1])) - set(ur[u])- set(test_ur[u])) 
                 neg_cands = random.sample(neg_item_pool, max_i_num - len(candidates[u])) 
                 cands = actual_cands | set(neg_cands)
             else:

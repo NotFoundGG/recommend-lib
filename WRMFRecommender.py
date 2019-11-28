@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-28 15:47:50
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:45:55
+@LastEditTime: 2019-11-28 16:19:06
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: WRMF
@@ -133,7 +133,7 @@ if __name__ == '__main__':
         for u in val_user_set:
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0]
             candidates[u] = list(set(unint) & set(ur[u]))
-        max_i_num = 100
+        max_i_num = 1000
         preds = {}
         item_pool = list(range(dataset.item_num))
         for u in tqdm(val_user_set):
@@ -165,13 +165,13 @@ if __name__ == '__main__':
             unint = np.where(dataset.train_list[fold][u, :].toarray().reshape(-1) == 0)[0] # 未交互的物品
             candidates[u] = list(set(unint) & set(test_ur[u])) # 未交互的物品中属于后续已交互的物品
 
-        max_i_num = 100
+        max_i_num = 1000
         preds = {}
         item_pool = list(range(dataset.item_num))
         for u in tqdm(test_user_set):
             if len(candidates[u]) < max_i_num:
                 actual_cands = set(candidates[u])
-                neg_item_pool = set(item_pool) - set(test_ur[u])
+                neg_item_pool = set(item_pool) - set(test_ur[u]) - set(ur[u])
                 neg_cands = random.sample(neg_item_pool, max_i_num - len(candidates[u])) 
                 cands = actual_cands | set(neg_cands)
             else:

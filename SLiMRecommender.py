@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-10-27 19:13:22
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:33:32
+@LastEditTime: 2019-11-28 16:14:04
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: SLIM recommender
@@ -101,7 +101,7 @@ class SLIM(object):
             truth = self.ur[u]
         elif method == 'val':
             truth = self.val_ur[u]
-        max_i_num = 100
+        max_i_num = 1000
         if len(truth) < max_i_num:
             cands_num = max_i_num - len(truth)
             sub_item_pool = set(range(self.data.num_item)) - user_item_set - set(truth)
