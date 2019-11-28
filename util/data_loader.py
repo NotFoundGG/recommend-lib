@@ -2,7 +2,7 @@
 @Author: Yu Di
 @Date: 2019-09-29 11:10:53
 @LastEditors: Yudi
-@LastEditTime: 2019-11-26 14:05:36
+@LastEditTime: 2019-11-28 10:33:18
 @Company: Cardinal Operation
 @Email: yudi@shanshu.ai
 @Description: data utils
@@ -63,6 +63,8 @@ def load_rate(src='ml-100k', prepro='origin'):
         # user_artists.dat
         df = pd.read_csv(f'./data/{src}/user_artists.dat', sep='\t')
         df.rename(columns={'userID':'user', 'artistID':'item', 'weight':'rating'}, inplace=True)
+        # treat weight as interaction, as 1
+        df['rating'] = 1.0
     elif src == 'bx':
         df = pd.read_csv(f'./data/{src}/BX-Book-Ratings.csv', delimiter=";", encoding="latin1")
         df.rename(columns={'User-ID': 'user', 'ISBN': 'item', 'Book-Rating': 'rating'}, inplace=True)
@@ -258,6 +260,14 @@ def load_libfm(src='ml-100k', data_split='fo', by_time=0, val_method='cv', fold_
         # rating >=4 interaction =1
         df['rating'] = df.rating.agg(lambda x: 1 if x >= 4 else -1).astype(float)
 
+        df['user'] = pd.Categorical(df.user).codes
+        df['item'] = pd.Categorical(df.item).codes
+        user_tag_info = df[['user']].copy()
+        item_tag_info = df[['item']].copy()
+        user_tag_info = user_tag_info.drop_duplicates()
+        item_tag_info = item_tag_info.drop_duplicates()
+    elif src == 'bx':
+        df['rating'] = df.rating.agg(lambda x: 1 if x >= 5 else -1).astype(float)
         df['user'] = pd.Categorical(df.user).codes
         df['item'] = pd.Categorical(df.item).codes
         user_tag_info = df[['user']].copy()
